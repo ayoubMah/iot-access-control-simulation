@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import upec.badge.core_operational_backend.model.RegisteredPerson;
 import upec.badge.core_operational_backend.repository.RegisteredPersonRepository;
 import upec.badge.core_operational_backend.service.EventProducer;
+import upec.badge.core_operational_backend.service.MqttDecisionPublisher; // Added import
 
 import java.util.List;
 
@@ -17,10 +18,13 @@ public class PeopleController {
 
     private final RegisteredPersonRepository repository;
     private final EventProducer producer;
+    private final MqttDecisionPublisher mqttDecisionPublisher; // Added field
 
-    public PeopleController(RegisteredPersonRepository repository, EventProducer producer) {
+    public PeopleController(RegisteredPersonRepository repository, EventProducer producer,
+                            MqttDecisionPublisher mqttDecisionPublisher) { // Modified constructor
         this.repository = repository;
         this.producer = producer;
+        this.mqttDecisionPublisher = mqttDecisionPublisher; // Initialized field
     }
 
     //@GetMapping
@@ -37,6 +41,7 @@ public class PeopleController {
 
         boolean granted = person.isActive();
         producer.publishBadgeEvent(badgeId, granted);
+        mqttDecisionPublisher.publishDecision(badgeId, granted); // Added MQTT publish
         return person;
     }
 
