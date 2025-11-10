@@ -1,127 +1,248 @@
-# Microscope — Step‑by‑Step To‑Do (with checkboxes)
+# 🧠 Microscope — Step-by-Step Execution Plan (with Delegation)
 
-A detailed, incremental execution plan. Each step lists **done criteria** and suggested commands.
-
-> Tip: check items as you complete them.
+A living, incremental roadmap for the Badge Entrance Simulation project.
+Each phase lists ownership, deliverables, and "done" criteria.
+Use GitHub issues or Markdown checkboxes to track progress.
 
 ---
 
-## Phase 0 — Bootstrap & Infrastructure
-> Goal: `docker compose up` starts all infra and `psql` shows seeded data.
+## 👥 Roles Overview
 
-## ✅ Completed
-- [x] PostgreSQL container + seed (`registered_people` table)
-- [x] Redis container healthy
-- [x] Zookeeper + Kafka running
-- [x] Mosquitto MQTT broker configured (`allow_anonymous true`)
-- [x] NGINX health endpoint (`/healthz`) reachable on port 8080
-- [x] Verified connections:
-  - [x] `psql` → 4 seeded users
-  - [x] `redis-cli ping` → `PONG`
-  - [x] `curl localhost:8080/healthz` → `ok`
+| Person | Focus | Keywords |
+|--------|-------|----------|
+| **AyoubMah** | Infra orchestration, DevOps, Docs | Docker · Compose · NGINX · Makefile · Integration |
+| **AyoubOua** | Core business logic & backend services | Spring Boot · Kafka · MQTT · Redis · PostgreSQL |
+| **Hamza** | Messaging & IoT simulation layer | Node.js · MQTT · Kafka · Bridge · Mocks |
 
-## 🧠 Learned
-- Compose service dependencies and `healthcheck` usage  
-- Postgres seeding via `/docker-entrypoint-initdb.d`  
-- Basic MQTT pub/sub lifecycle  
-- Understanding early-startup false negatives in healthchecks
+---
 
-## Phase 1 — Service Skeletons
-- [ ] Scaffold Spring Boot services: `core-operational-backend`, `entrance-cockpit-backend`, `cache-loader-backend` (Java 21).
-- [ ] Scaffold Node.js service: `telemetry-messaging-backend`.
-- [ ] Add Dockerfiles for each service and connect to compose network.
-  - **Done when:** `docker compose build` succeeds and services start with HEALTHY status.
+## 🧱 Phase 0 — Bootstrap & Infrastructure
 
-## Phase 2 — Messaging Contracts
-- [ ] Define MQTT topics:
-  - `iot/entrance/badge` (badge scans)
-  - `iot/entrance/decision` (authorize/deny)
-- [ ] Define Kafka topics:
-  - `attempt-logs`
-  - `entrance-logs`
-- [ ] Document payload JSON schemas in `/docs/messaging`.
-  - **Done when:** Topics auto-create or init script provisions them and schemas are documented.
+**Owner:** Ayoub
 
-## Phase 3 — IoT Mocks
-- [ ] Implement **badge-sensor-mock** (Node): publishes badge scans periodically or via CLI.
-- [ ] Implement **door-lock-mock** (Node): subscribes to `iot/entrance/decision` and logs OPEN/DENIED.
-- [ ] Containerize both mocks and add to compose (optional: toggle via profiles).
-  - **Done when:** Running the sensor mock produces console output in the lock mock.
+**Goal:** `docker compose up` starts all infra and DB has seeded users.
 
-## Phase 4 — MQTT ↔ Kafka Bridge
+### Tasks
+
+- [x] Add base Docker Compose with: PostgreSQL, Redis, Kafka + Zookeeper, Mosquitto, NGINX.
+- [x] Seed DB with sample data via `init.sql`.
+- [x] Configure healthcheck for all containers.
+- [x] Verify connectivity:
+  - `psql` → 4 users
+  - `redis-cli ping` → PONG
+  - `curl localhost:8080/healthz` → ok
+
+### ✅ Done When
+
+- All infra services reach healthy state.
+- Logs show no connection retries.
+
+---
+
+## ⚙️ Phase 1 — Service Skeletons
+
+**Owner:** Ouadra (backend) + Hamza (Node) + Ayoub (Docker)
+
+### Tasks
+
+- [ ] Scaffold Spring Boot apps:
+  - `core-operational-backend`
+  - `entrance-cockpit-backend`
+  - `cache-loader-backend`
+- [ ] Scaffold Node.js app:
+  - `telemetry-messaging-backend`
+- [ ] Add Dockerfiles for each; join shared network.
+
+### ✅ Done When
+
+`docker compose build` completes and all services start HEALTHY.
+
+---
+
+## 🔐 Phase 2 — Messaging & Contracts
+
+**Owner:** Ayoub (docs) · Ouadra (Kafka) · Hamza (MQTT)
+
+### Tasks
+
+- [ ] Define topics:
+  - **MQTT** → `iot/entrance/badge`, `iot/entrance/decision`
+  - **Kafka** → `attempt-logs`, `entrance-logs`
+- [ ] Document payload schemas in `/docs/messaging`.
+- [ ] Provision topics via script or auto-create.
+
+### ✅ Done When
+
+Both Kafka and MQTT topics confirmed reachable.
+
+---
+
+## 🧪 Phase 3 — IoT Mocks
+
+**Owner:** Hamza
+
+### Tasks
+
+- [ ] `badge-sensor-mock` → publishes badge scans (`badge_id`, `timestamp`)
+- [ ] `door-lock-mock` → subscribes to `iot/entrance/decision`, logs OPEN/DENIED
+- [ ] Add both to Compose (optional profiles).
+
+### ✅ Done When
+
+Publishing a badge scan triggers console output in lock mock.
+
+---
+
+## 🔄 Phase 4 — MQTT ↔ Kafka Bridge
+
+**Owner:** Hamza
+
+### Tasks
+
 - [ ] Implement `telemetry-messaging-backend`:
-  - Subscribe to `iot/entrance/badge` (MQTT).
-  - Produce normalized event to Kafka `attempt-logs`.
-- [ ] (Optional) Also consume `iot/entrance/decision` and produce to `entrance-logs`.
-  - **Done when:** Kafka topics receive events visible via `kafka-console-consumer`.
+  - MQTT sub → `iot/entrance/badge`
+  - Kafka pub → `attempt-logs`
+- [ ] Optionally mirror `iot/entrance/decision` → `entrance-logs`.
 
-## Phase 5 — Core Operational Logic
-- [ ] Implement Redis-first lookup for `badge_id`, fallback to PostgreSQL.
-- [ ] Decision policy: allow if user exists and `is_active=true` (simple rule).
-- [ ] Publish decision to `iot/entrance/decision` (MQTT).
-- [ ] Also produce structured event to Kafka `entrance-logs` when authorized.
-  - **Done when:** A badge scan results in a decision event and corresponding Kafka records.
+### ✅ Done When
 
-## Phase 6 — Cache Loader
-- [ ] Build `cache-loader-backend` scheduled job:
-  - Poll DB every N seconds/minutes; write `{badge_id → user record}` into Redis.
-  - Evict deleted/disabled users.
-  - **Done when:** Disabling a user in DB reflects in Redis after the next sync.
-
-## Phase 7 — Cockpit Backend & UI
-- [ ] **entrance-cockpit-backend**:
-  - Kafka consumer: stream `attempt-logs` & `entrance-logs`.
-  - WebSocket endpoint: push live updates to UI.
-  - REST: manual authorize/deny endpoint → publish MQTT decision.
-- [ ] **entrance-cockpit-front**:
-  - Simple HTML/CSS/JS page; connect WebSocket; render live table of events; buttons for manual actions.
-  - **Done when:** UI updates in < 2s after a badge scan; manual authorize triggers lock mock OPEN.
-
-## Phase 8 — NGINX Gateway
-- [ ] Configure TLS (self-signed for dev), routing to cockpit-backend, static UI, and WebSocket proxy.
-- [ ] Add rate limits and request logs.
-  - **Done when:** All UI/API traffic goes through NGINX and WebSockets work via proxy.
-
-## Phase 9 — Observability (optional but recommended)
-- [ ] Add Prometheus exporters (JVM, Node), scrape configs, and Grafana dashboards.
-- [ ] Add Loki + promtail for logs; create basic logs dashboard.
-  - **Done when:** Dashboards show Kafka lag, MQTT message rate, JVM heap, and NGINX metrics.
-
-## Phase 10 — CI/CD & Testing
-- [ ] GitHub Actions workflow:
-  - Build Java and Node services.
-  - Run unit tests.
-  - Build/push Docker images (if configured).
-  - Spin `docker compose` for light integration tests.
-- [ ] Java: Testcontainers integration tests for Redis/Postgres/Kafka.
-- [ ] Contract tests for message payloads.
-  - **Done when:** CI passes end‑to‑end on every PR.
-
-## Phase 11 — Security & Hardening (dev-level)
-- [ ] Secrets via `.env`/Docker secrets (no hardcoded creds).
-- [ ] TLS between NGINX and backends (optional mTLS internally).
-- [ ] Minimal RBAC for cockpit admin actions.
-  - **Done when:** Secrets are not in repo; TLS is enforced at gateway; admin path protected.
+`kafka-console-consumer` shows forwarded MQTT messages.
 
 ---
 
-## Commands Cheatsheet (examples)
+## 🧠 Phase 5 — Core Operational Logic
+
+**Owner:** Ouadra
+
+### Tasks
+
+- [ ] Redis-first lookup + PostgreSQL fallback for badge validation.
+- [ ] Decision policy: user exists & active → GRANTED.
+- [ ] Publish decision → `iot/entrance/decision` (MQTT).
+- [ ] Log all attempts to Kafka (`attempt-logs`, `entrance-logs`).
+
+### ✅ Done When
+
+Badge scan results in both decision MQTT message and Kafka event.
+
+---
+
+## 🗄️ Phase 6 — Cache Loader
+
+**Owner:** Ouadra
+
+### Tasks
+
+- [ ] Scheduled job sync DB → Redis periodically.
+- [ ] Evict disabled users.
+
+### ✅ Done When
+
+Disabling a user in DB reflects in Redis next cycle.
+
+---
+
+## 📡 Phase 7 — Cockpit Backend & UI
+
+**Owner:** Ouadra (back) + Ayoub (front & proxy)
+
+### Tasks
+
+- [ ] **Backend:** Kafka consumer for `attempt-logs` & `entrance-logs`; WebSocket to UI; manual authorize endpoint → MQTT publish.
+- [ ] **Front:** static HTML/JS dashboard; show live table; manual actions.
+
+### ✅ Done When
+
+UI updates < 2s after scan; manual authorize opens lock mock.
+
+---
+
+## 🌐 Phase 8 — NGINX Gateway
+
+**Owner:** Ayoub
+
+### Tasks
+
+- [ ] Configure TLS (self-signed), routes for cockpit backend + static UI + WebSocket proxy.
+- [ ] Add rate limits and access logs.
+
+### ✅ Done When
+
+All front/back traffic goes through NGINX.
+
+---
+
+## 📊 Phase 9 — Observability (optional)
+
+**Owner:** Ayoub
+
+### Tasks
+
+- [ ] Add Prometheus + Grafana + Loki (via Compose).
+- [ ] Expose metrics endpoints on each service.
+
+### ✅ Done When
+
+Dashboard shows Kafka lag, MQTT rate, JVM metrics.
+
+---
+
+## 🚀 Phase 10 — CI/CD & Testing
+
+**Owner:** Ayoub (+ support from both)
+
+### Tasks
+
+- [ ] GitHub Actions workflow:
+  - Build all images
+  - Run unit + integration tests
+  - Spin Compose for validation
+- [ ] Java → Testcontainers; Node → Jest.
+
+### ✅ Done When
+
+Full CI pipeline green on every PR.
+
+---
+
+## 🛡️ Phase 11 — Security & Hardening
+
+**Owner:** Ayoub (lead) · Ouadra (back policies)
+
+### Tasks
+
+- [ ] Secrets via `.env` / Docker secrets
+- [ ] TLS inside Compose (optional mTLS)
+- [ ] Simple RBAC for cockpit admin
+
+### ✅ Done When
+
+Secrets not committed; TLS enforced; admin path protected.
+
+---
+
+## 🧰 Quick Commands
 
 ```bash
-# Compose up
+# Start full stack
 docker compose -f deploy/docker-compose.yml up -d
 
-# Kafka: read from topic
-docker exec -it kafka   kafka-console-consumer --bootstrap-server localhost:9092   --topic attempt-logs --from-beginning
+# Kafka: consume topic
+docker exec kafka kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic attempt-logs --from-beginning
 
-# Publish a test badge (MQTT)
-docker exec -it mosquitto   mosquitto_pub -h mosquitto -t iot/entrance/badge -m '{"badge_id":"A12345","timestamp":"2025-01-01T00:00:00Z"}'
+# MQTT: simulate badge
+docker exec mosquitto mosquitto_pub \
+  -h mosquitto -t iot/entrance/badge \
+  -m '{"badge_id":"A12345","timestamp":"2025-01-01T00:00:00Z"}'
 ```
 
 ---
 
-## Backlog (future ideas)
-- Multi-door / multi-site support (topic partitioning by door/site).
-- Avro/Schema Registry for Kafka.
-- Graceful degradation when Redis/Postgres unavailable.
-- Audit UI with filters and CSV export.
+## 💡 Backlog / Future Ideas
+
+- Multi-door / multi-site topic partitioning
+- Avro + Schema Registry
+- Graceful degradation on service failures
+- Audit dashboard + CSV export

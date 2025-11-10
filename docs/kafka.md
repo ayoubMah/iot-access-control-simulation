@@ -24,7 +24,7 @@ graph TD
         KAFKA[badge-kafka container]
         TOPIC[(entrance_attempts Topic)]
     end
-    
+
     subgraph "Verification"
         CLI[kafka-console-consumer]
     end
@@ -34,8 +34,11 @@ graph TD
     KAFKA -->|Stores in| TOPIC
     CLI -->|Reads from| TOPIC
 
-    style COB fill:#f0e6ff
-    style KAFKA fill:#ffe6f0
+    style COB fill:#f0e6ff,stroke:#6b21a8,stroke-width:2px
+    style KAFKA fill:#ffe6f0,stroke:#be123c,stroke-width:2px
+    style TOPIC fill:#fff9e6,stroke:#ca8a04,stroke-width:2px
+    style A fill:#e0f2fe,stroke:#0369a1,stroke-width:2px
+    style CLI fill:#dcfce7,stroke:#15803d,stroke-width:2px
 ```
 
 ---
