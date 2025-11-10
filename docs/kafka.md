@@ -11,21 +11,21 @@ Kafka acts as a high-throughput, durable messaging system for internal service-t
 The data flow for Kafka is straightforward: the `core-operational-backend` acts as a **Producer**, sending event records to the `badge-kafka` **Broker**, which stores them in the `entrance_attempts` **Topic**.
 
 ```mermaid
-graph TD
-    subgraph "User Action"
-        A[Browser Request to /api/people/{badgeId}]
+flowchart TD
+    subgraph UserAction["User Action"]
+        A["Browser Request to /api/people/{badgeId}"]
     end
 
-    subgraph "Backend Service"
+    subgraph BackendService["Backend Service"]
         COB[core-operational-backend]
     end
 
-    subgraph "Kafka Broker"
+    subgraph KafkaBroker["Kafka Broker"]
         KAFKA[badge-kafka container]
-        TOPIC[(entrance_attempts Topic)]
+        TOPIC[("entrance_attempts Topic")]
     end
 
-    subgraph "Verification"
+    subgraph Verification["Verification"]
         CLI[kafka-console-consumer]
     end
 
