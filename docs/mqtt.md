@@ -22,11 +22,11 @@ graph TD
         MQTT[badge-mosquitto container]
         TOPIC[(iot/entrance/decision Topic)]
     end
-    
+
     subgraph "Simulated IoT Device"
         DLM[door-lock-mock]
     end
-    
+
     subgraph "Verification"
         CLI[mosquitto_sub]
     end
@@ -179,6 +179,12 @@ This command starts a subscriber that listens to the `iot/entrance/decision` top
 
 ```bash
 docker exec badge-mosquitto mosquitto_sub -h localhost -t iot/entrance/decision
+```
+
+THIS COMMAND IS BETTER :)
+
+```bash
+docker exec -it badge-mosquitto mosquitto_sub -h localhost -t iot/entrance/decision -v
 ```
 
 ### Expected Output
