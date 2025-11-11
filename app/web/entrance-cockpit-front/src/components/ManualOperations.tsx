@@ -8,6 +8,7 @@ export default function ManualOperations() {
   const [loading, setLoading] = useState(false);
 
 const manualEvent = async (eventType: "open" | "close") => {
+  console.log(eventType)
   try {
     setLoading(true)
   } catch (err) {

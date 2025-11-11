@@ -57,7 +57,7 @@ function App() {
           </TabsList>
 
           <TabsContent value="live" className="mt-6 bg-gray-50 p-4 rounded-lg shadow-inner">
-            <DoorStream onEvent={setLastEvent} />
+            <DoorStream />
           </TabsContent>
 
           <TabsContent value="history" className="mt-6 bg-gray-50 p-4 rounded-lg shadow-inner">

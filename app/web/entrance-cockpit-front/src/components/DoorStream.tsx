@@ -1,22 +1,13 @@
-import { useEffect, useState } from "react";
 import { DoorOpen, DoorClosed, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { doorEventsStore, type DoorEvent } from "../stores/DoorEventsStore";
+import { doorEventsStore } from "../stores/DoorEventsStore";
 import { observer } from "mobx-react-lite";
 import { Badge } from "./ui/badge";
 
-interface DoorStreamProps {
-  onEvent: (event: DoorEvent) => void;
-}
 
-function DoorStream({ onEvent }: DoorStreamProps) {
-  const [isConnected, setIsConnected] = useState(doorEventsStore.connectionStatus == 'connected');
-  const [lastEvent, setLastEvent] = useState<DoorEvent | null>(null);
+function DoorStream() {
+  const isConnected = doorEventsStore.connectionStatus == 'connected';
   const events = doorEventsStore.getEvents()!;
-
-  useEffect(() => {
-    setLastEvent(events[0]);
-  }, [events]);
 
   return (
     <Card>

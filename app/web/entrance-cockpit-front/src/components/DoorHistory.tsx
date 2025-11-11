@@ -24,7 +24,7 @@ function DoorHistory() {
           <Button
             variant="outline"
             size="sm"
-            onClick={(e) => refreshHistory()}
+            onClick={() => refreshHistory()}
             disabled={isLoading}
           >
             {isLoading && <RefreshCw className={`h-4 w-4 mr-2 animate-spin`} />}
