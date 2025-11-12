@@ -1,4 +1,4 @@
-services:
+﻿services:
   postgres:
     image: postgres:15-alpine
     container_name: badge-postgres
@@ -11,8 +11,6 @@ services:
     volumes:
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - pgdata:/var/lib/postgresql/data
-    networks:
-      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U devuser -d badge_db"]
       interval: 5s
@@ -26,8 +24,6 @@ services:
       - "6379:6379"
     volumes:
       - redisdata:/data
-    networks:
-      - backend
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -44,8 +40,6 @@ services:
       - "2181:2181"
     volumes:
       - zookeeperdata:/var/lib/zookeeper/data
-    networks:
-      - backend
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
@@ -61,8 +55,6 @@ services:
       - "9092:9092"
     volumes:
       - kafkadata:/var/lib/kafka/data
-    networks:
-      - backend
 
   mosquitto:
     image: eclipse-mosquitto:2
@@ -73,10 +65,8 @@ services:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquittodata:/mosquitto/data
       - mosquittolog:/mosquitto/log
-    networks:
-      - backend
     healthcheck:
-      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$$SYS/broker/version' -C 1 -W 3 || exit 1"]
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$SYS/broker/version' -C 1 -W 3 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -112,21 +102,17 @@ services:
       - kafka
     networks:
       - backend
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://localhost:8081/actuator/health | grep UP"]
-      interval: 10s
-      retries: 5
     environment:
       SPRING_PROFILES_ACTIVE: dev
 
   door-lock-mock:
-    build:
-      context: ../app/services/iot/door-lock-mock
-    container_name: badge-door-lock-mock
-    depends_on:
-      - mosquitto
-    networks:
-      - backend
+  build: ./services/iot/door-lock-mock
+  container_name: badge-door-lock-mock
+  depends_on:
+    - mosquitto
+  networks:
+    - backend
+  restart: always
 
 
 

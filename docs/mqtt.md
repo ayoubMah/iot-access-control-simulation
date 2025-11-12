@@ -187,6 +187,11 @@ THIS COMMAND IS BETTER :)
 docker exec -it badge-mosquitto mosquitto_sub -h localhost -t iot/entrance/decision -v
 ```
 
+and then to se loogs
+```bash
+docker logs -f badge-door-lock-mock
+```
+
 ### Expected Output
 
 After running the subscriber and accessing the API endpoint, we expect to see a JSON message in the terminal, like this:

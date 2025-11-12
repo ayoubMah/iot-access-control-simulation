@@ -1,0 +1,11 @@
+{
+  "name": "door-lock-mock",
+  "version": "1.0.0",
+  "description": "Simulated IoT door lock that listens for authorization decisions via MQTT",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "mqtt": "^5.0.0",
+    "chalk": "^5.3.0"
+  }
+}
