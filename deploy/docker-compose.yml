@@ -128,6 +128,20 @@ services:
     networks:
       - backend
 
+  cockpit-front:
+    build:
+      context: ../app/web/entrance-cockpit-front
+    container_name: badge-cockpit-front
+    depends_on:
+      - core-operational-backend
+    environment:
+      - VITE_LOGS_BACKEND_SSE_URL=http://core-operational-backend:8081/events
+    ports:
+      - "3000:80"
+    networks:
+      - backend
+
+
 
 
 
