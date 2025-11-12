@@ -88,9 +88,12 @@ services:
       - "8080:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
     networks:
       - backend
     depends_on:
+      - core-operational-backend
+      - cockpit-front
       - postgres
       - redis
       - kafka
@@ -135,9 +138,7 @@ services:
     depends_on:
       - core-operational-backend
     environment:
-      - VITE_LOGS_BACKEND_SSE_URL=http://core-operational-backend:8081/events
-    ports:
-      - "3000:80"
+      - VITE_LOGS_BACKEND_SSE_URL=/api/events
     networks:
       - backend
 
