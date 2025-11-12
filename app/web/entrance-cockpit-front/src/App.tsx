@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import DoorStream from "./components/DoorStream";
+import { autorun } from "mobx";
 import DoorHistory from "./components/DoorHistory";
 import GateAnimation from "./components/GateAnimation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@radix-ui/react-tabs";
@@ -10,18 +11,25 @@ import { doorEventsStore, type DoorEvent } from "./stores/DoorEventsStore";
 import { observer } from "mobx-react-lite";
 
 function App() {
-  const [lastEvent, setLastEvent] = useState<DoorEvent>({
-    badgeId: "",
-    name: "",
-    state: "close",
-    timestamp: new Date()
-  });
-
-  const events = doorEventsStore.getEvents();
+  const [lastEvent, setLastEvent] = useState<DoorEvent | null>(null);
 
   useEffect(() => {
-    setLastEvent(events![0])
-  }, [events])
+    // 1️⃣ Connect to the SSE endpoint once when the app starts
+    doorEventsStore.connectToSSE(import.meta.env.VITE_LOGS_BACKEND_SSE_URL);
+  }, []);
+
+  useEffect(() => {
+    // 2️⃣ Subscribe to MobX store changes
+    const disposer = autorun(() => {
+      const events = doorEventsStore.getEvents();
+      if (events.length > 0) {
+        setLastEvent(events[0]);
+      }
+    });
+
+    // cleanup when component unmounts
+    return () => disposer();
+  }, []);
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-4xl">

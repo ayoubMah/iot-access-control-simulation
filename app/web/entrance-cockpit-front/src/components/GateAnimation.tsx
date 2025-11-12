@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { DoorEvent } from "../stores/DoorEventsStore";
 
 interface GateAnimationProps {
-  lastEvent: DoorEvent;
+  lastEvent: DoorEvent | null;
 }
 
 export default function GateAnimation({ lastEvent }: GateAnimationProps) {
