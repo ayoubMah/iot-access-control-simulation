@@ -18,20 +18,20 @@ public class PeopleController {
 
     private final RegisteredPersonRepository repository;
     private final EventProducer producer;
-    private final MqttDecisionPublisher mqttDecisionPublisher; // Added field
+    private final MqttDecisionPublisher mqttDecisionPublisher;
+    private final EventStreamController sseController;
 
-    public PeopleController(RegisteredPersonRepository repository, EventProducer producer,
-                            MqttDecisionPublisher mqttDecisionPublisher) { // Modified constructor
+    public PeopleController(
+            RegisteredPersonRepository repository,
+            EventProducer producer,
+            MqttDecisionPublisher mqttDecisionPublisher,
+            EventStreamController sseController
+    ) {
         this.repository = repository;
         this.producer = producer;
-        this.mqttDecisionPublisher = mqttDecisionPublisher; // Initialized field
+        this.mqttDecisionPublisher = mqttDecisionPublisher;
+        this.sseController = sseController;
     }
-
-    //@GetMapping
-    //public List<RegisteredPerson> all() {
-     //   return repository.findAll();
-    //}
-
 
     @GetMapping("/{badgeId}")
     @Cacheable(value = "people", key = "#badgeId")
@@ -41,8 +41,15 @@ public class PeopleController {
 
         boolean granted = person.isActive();
         producer.publishBadgeEvent(badgeId, granted);
-        mqttDecisionPublisher.publishDecision(badgeId, granted); // Added MQTT publish
+        mqttDecisionPublisher.publishDecision(badgeId, granted);
+
+        // 🔥 Push SSE event
+        sseController.broadcast(
+                new DoorEvent(person.getFullName(), granted ? "open" : "closed")
+        );
+
         return person;
     }
 
+    static record DoorEvent(String name, String state) {}
 }

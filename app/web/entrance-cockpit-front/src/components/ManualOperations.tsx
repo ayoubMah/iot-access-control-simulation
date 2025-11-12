@@ -8,16 +8,22 @@ export default function ManualOperations() {
   const [loading, setLoading] = useState(false);
 
 const manualEvent = async (eventType: "open" | "close") => {
-  console.log(eventType)
   try {
-    setLoading(true)
+    setLoading(true);
+    const res = await fetch(`/api/manual/${eventType}`, { method: "POST" });
+    if (res.ok) {
+      toast.success(`Door ${eventType === "open" ? "opened" : "closed"} successfully`);
+    } else {
+      toast.error("Command failed");
+    }
   } catch (err) {
-    console.error("Failed to simulate event:", err)
-    toast.error("Failed to simulate door event")
+    console.error("Failed to simulate event:", err);
+    toast.error("Failed to send command");
   } finally {
-    setLoading(false)
+    setLoading(false);
   }
-}
+};
+
 
   return (
     <Card>
