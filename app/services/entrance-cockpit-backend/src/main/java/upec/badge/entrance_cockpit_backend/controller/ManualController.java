@@ -18,13 +18,13 @@ public class ManualController {
 
     @PostMapping("/open")
     public ResponseEntity<Void> openDoor() {
-        manualControlService.sendDoorCommand("OPEN");
+        manualControlService.sendOpenCommand();
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/close")
     public ResponseEntity<Void> closeDoor() {
-        manualControlService.sendDoorCommand("CLOSE");
+        manualControlService.sendCloseCommand();
         return ResponseEntity.ok().build();
     }
 }
