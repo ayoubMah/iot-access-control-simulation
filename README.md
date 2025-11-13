@@ -10,19 +10,19 @@ A DevOps- and infra-focused simulation of a company entrance system. Employees â
 ```mermaid
 graph TD
     subgraph "Clients & IoT"
-        UI[Cockpit Front-End<br/>(React/Vite)]
-        DLM[Door Lock Mock<br/>(MQTT Subscriber)]
-        BSM[Badge Sensor Mock<br/>(Simulated API Call)]
+        UI[Cockpit Front-End React/Vite]
+        DLM[Door Lock Mock MQTT Subscriber]
+        BSM[Badge Sensor Mock Simulated API Call]
     end
 
     subgraph "Gateway"
-        NGINX[NGINX Reverse Proxy<br/>Port: 8080]
+        NGINX[NGINX Reverse Proxy Port 8080]
     end
 
     subgraph "Application Layer"
-        COB[Core Operational Backend<br/>(Spring Boot)<br/>Decision Logic]
-        ECB[Entrance Cockpit Backend<br/>(Spring Boot)<br/>UI Gateway & Event Hub]
-        CLB[Cache Loader Backend<br/>(Spring Boot)<br/>One-shot Job]
+        COB[Core Operational Backend Spring Boot Decision Logic]
+        ECB[Entrance Cockpit Backend Spring Boot UI Gateway & Event Hub]
+        CLB[Cache Loader Backend Spring Boot One-shot Job]
     end
 
     subgraph "Data & Messaging Layer"
@@ -32,27 +32,22 @@ graph TD
         REDIS[(Redis Cache)]
     end
 
-    %% User Interaction Flow
     UI -- "POST /api/cockpit/manual/open" --> NGINX
     BSM -- "GET /api/people/{badgeId}" --> NGINX
 
-    %% Gateway Routing
     NGINX -- "/api/cockpit/*" --> ECB
     NGINX -- "/api/people/*" --> COB
     ECB -- "REST: /api/core/manual/open" --> COB
 
-    %% Core Logic Flow
     COB -- "Reads/Writes" --> PG
     COB -- "Reads/Writes" --> REDIS
     COB -- "publishes decision" --> MQTT
     COB -- "publishes audit log" --> KAFKA
 
-    %% Event & IoT Flow
     MQTT -- "subscribes to decision" --> DLM
     KAFKA -- "consumes audit log" --> ECB
-    ECB -- "streams events (SSE)" --> UI
+    ECB -- "streams events SSE" --> UI
 
-    %% Cache Loading Flow
     CLB -- "reads" --> PG
     CLB -- "writes" --> REDIS
 
