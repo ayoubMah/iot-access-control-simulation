@@ -8,225 +8,276 @@ A DevOps- and infra-focused simulation of a company entrance system. Employees �
 
 
 ```mermaid
-graph TB
-    subgraph "Physical Layer"
-        BR[Badge Reader / MQTT Device]
+graph TD
+    subgraph "Clients & IoT"
+        UI[Cockpit Front-End<br/>(React/Vite)]
+        DLM[Door Lock Mock<br/>(MQTT Subscriber)]
+        BSM[Badge Sensor Mock<br/>(Simulated API Call)]
     end
 
-    subgraph "Message Broker Layer"
-        MQTT[Mosquitto Broker<br/>Port: 1883]
-        KAFKA[Apache Kafka<br/>Topic: entrance_attempts]
-        ZK[Zookeeper<br/>Port: 2181]
+    subgraph "Gateway"
+        NGINX[NGINX Reverse Proxy<br/>Port: 8080]
     end
 
     subgraph "Application Layer"
-        ECB[Entrance Cockpit Backend<br/>MQTT Consumer & Kafka Producer]
-        COB[Core Operational Backend<br/>Kafka Consumer<br/>Port: 8081]
+        COB[Core Operational Backend<br/>(Spring Boot)<br/>Decision Logic]
+        ECB[Entrance Cockpit Backend<br/>(Spring Boot)<br/>UI Gateway & Event Hub]
+        CLB[Cache Loader Backend<br/>(Spring Boot)<br/>One-shot Job]
     end
 
-    subgraph "Data Layer"
-        PG[(PostgreSQL<br/>badge_db<br/>Port: 5432)]
-        REDIS[(Redis Cache<br/>Port: 6379)]
+    subgraph "Data & Messaging Layer"
+        KAFKA[Apache Kafka]
+        MQTT[Mosquitto Broker]
+        PG[(PostgreSQL)]
+        REDIS[(Redis Cache)]
     end
 
-    subgraph "Presentation Layer"
-        NGINX[NGINX Reverse Proxy]
-        DASH[Dashboard UI]
-    end
+    %% User Interaction Flow
+    UI -- "POST /api/cockpit/manual/open" --> NGINX
+    BSM -- "GET /api/people/{badgeId}" --> NGINX
 
-    %% Physical to Message Broker
-    BR -->|publishes badge scan| MQTT
-    
-    %% MQTT to Entrance Backend
-    MQTT -->|subscribes| ECB
-    
-    %% Entrance Backend to Kafka
-    ECB -->|produces event| KAFKA
-    ZK -.->|manages| KAFKA
-    
-    %% Kafka to Core Backend
-    KAFKA -->|consumes event| COB
-    
-    %% Core Backend to Data Layer
-    COB -->|validates & stores| PG
-    COB -->|caches| REDIS
-    
-    %% Data to Presentation
-    COB -->|REST API| NGINX
-    NGINX -->|serves| DASH
-    
-    %% Query path
-    DASH -.->|queries| NGINX
-    NGINX -.->|/api/people, etc.| COB
+    %% Gateway Routing
+    NGINX -- "/api/cockpit/*" --> ECB
+    NGINX -- "/api/people/*" --> COB
+    ECB -- "REST: /api/core/manual/open" --> COB
 
-    style BR fill:#e1f5ff
-    style MQTT fill:#fff4e6
-    style KAFKA fill:#ffe6f0
-    style ECB fill:#f0e6ff
+    %% Core Logic Flow
+    COB -- "Reads/Writes" --> PG
+    COB -- "Reads/Writes" --> REDIS
+    COB -- "publishes decision" --> MQTT
+    COB -- "publishes audit log" --> KAFKA
+
+    %% Event & IoT Flow
+    MQTT -- "subscribes to decision" --> DLM
+    KAFKA -- "consumes audit log" --> ECB
+    ECB -- "streams events (SSE)" --> UI
+
+    %% Cache Loading Flow
+    CLB -- "reads" --> PG
+    CLB -- "writes" --> REDIS
+
+    style UI fill:#e1f5ff
+    style DLM fill:#e1f5ff
+    style BSM fill:#e1f5ff
+    style NGINX fill:#ffe6e6
     style COB fill:#f0e6ff
+    style ECB fill:#f0e6ff
+    style CLB fill:#f0e6ff
+    style KAFKA fill:#fff4e6
+    style MQTT fill:#fff4e6
     style PG fill:#e6ffe6
     style REDIS fill:#e6ffe6
-    style NGINX fill:#ffe6e6
-    style DASH fill:#ffe6e6
-    style ZK fill:#fff4e6
 ```
 
-
+### Components
 
 **Clients & IoT (simulated)**
-- *Entrance Cockpit (Web UI)* — Real‑time dashboard; manual authorize/deny.
-- *Badge Sensor (Mock MQTT client)* — Publishes badge scans.
-- *Door Lock (Mock MQTT client)* — Subscribes to authorization decisions.
+- *Entrance Cockpit (Web UI)* — Real-time dashboard served by NGINX; sends manual commands to the cockpit backend.
+- *Door Lock (Mock MQTT client)* — Subscribes to authorization decisions on an MQTT topic.
+- *Badge Sensor (Simulated via curl/Postman)* — Triggers the core logic by making a REST API call.
 
 **Gateway**
-- *NGINX* — TLS termination, routing to backends, WebSocket proxy, gRPC passthrough.
+- *NGINX* — Reverse proxy routing UI and API requests to the correct backend services.
 
 **Microservices (Dockerized)**
-- *entrance-cockpit-backend (Spring Boot)* — REST/WebSocket for cockpit, exposes admin ops, consumes Kafka logs.
-- *core-operational-backend (Spring Boot)* — Badge validation and authorize/deny decision; interacts with Redis/PostgreSQL; publishes to MQTT & Kafka.
-- *telemetry-messaging-backend (Node.js)* — Bridges MQTT ↔ Kafka; normalizes telemetry.
-- *cache-loader-backend (Spring Boot)* — Periodically syncs PostgreSQL → Redis.
+- *core-operational-backend (Spring Boot)* — **The Brain.** Validates badges against Redis/PostgreSQL; publishes decisions to MQTT and audit logs to Kafka. Exposes the core decision-making and manual override endpoints.
+- *entrance-cockpit-backend (Spring Boot)* — **The UI Gateway.** Consumes Kafka logs, streams them to the UI via Server-Sent Events (SSE), and provides the API for manual overrides from the UI.
+- *cache-loader-backend (Spring Boot)* — **One-shot Job.** Runs on startup (or periodically) to populate the Redis cache from PostgreSQL.
 
 **Data & Messaging**
-- *PostgreSQL* — Registered people, audit.
-- *Redis* — Hot cache of registered/active badges.
-- *Kafka* — Topics for `attempt-logs` and `entrance-logs`.
-- *MQTT broker (Mosquitto/EMQX)* — Topics for `iot/entrance/badge` and `iot/entrance/decision`.
+- *PostgreSQL* — The source of truth for registered people and their status.
+- *Redis* — A hot cache of registered people for fast lookups.
+- *Kafka* — A durable log for all access events (`access-events`) and manual overrides (`manual-override-events`).
+- *MQTT broker (Mosquitto)* — A lightweight broker for real-time IoT communication (`iot/entrance/decision`).
 
 ---
 
-## 🔄 End‑to‑End Data Flow (overview)
+## 🔄 End-to-End Data Flow
 
-1) **Badge scan** → Badge Sensor publishes `{badge_id, ts}` to `iot/entrance/badge` (MQTT).  
-2) **Core Operational** consumes scan (via bridge), checks **Redis → PostgreSQL** fallback, decides authorize/deny.  
-3) **Decision** → Publishes decision to `iot/entrance/decision` (MQTT). Door Lock mock reacts.  
-4) **Telemetry & Logs** → Sends structured events to **Kafka**: `attempt-logs` (all scans), `entrance-logs` (authorized).  
-5) **Cockpit** → Backend streams logs to UI (WebSocket) and supports manual overrides (which publish a decision event).  
-6) **Cache Loader** → Keeps Redis in sync with PostgreSQL at intervals.
+1. **Badge Scan (Simulation)** → An external client calls `GET /api/people/{badgeId}` via NGINX, which routes to the **Core Operational Backend**.
+2. **Decision** → The Core Backend checks **Redis** for the badge, with a fallback to **PostgreSQL**. It makes an authorize/deny decision.
+3. **IoT Command** → The Core Backend publishes the decision (`GRANTED`/`DENIED`) to the `iot/entrance/decision` MQTT topic. The **Door Lock Mock** reacts.
+4. **Audit Log** → The Core Backend also publishes a detailed event to the `access-events` Kafka topic.
+5. **UI Update** → The **Entrance Cockpit Backend**, which is subscribed to the Kafka topic, receives the event and pushes it to all connected **Web UI** clients via SSE.
+6. **Cache Loading** → On startup, the **Cache Loader Backend** reads from PostgreSQL and populates the Redis cache.
 
 ---
 
 ## 🧰 Tech Stack
 
-- **Runtime:** Spring Boot (Java 21), Node.js (LTS), HTML/CSS/JS (Vanilla or lightweight framework optional)
-- **Infra (local):** Docker Compose, NGINX, Redis, PostgreSQL, Kafka (+ ZooKeeper), MQTT (Mosquitto)
-- **Build/Dev:** Gradle/Maven, npm, Makefile
-- **CI (later):** GitHub Actions or GitLab CI
-- **Observability:** Prometheus + Grafana, Loki (logs) — optional in Phase 3
-- **Security:** mTLS (internal, optional), OAuth2/JWT (admin UI), secrets via env/.env + Docker secrets
+- **Runtime:** Spring Boot (Java 21), Node.js (for IoT mocks)
+- **Frontend:** Vite, React, TypeScript
+- **Infra (local):** Docker Compose, NGINX, Redis, PostgreSQL, Kafka (+ ZooKeeper), Mosquitto
+- **Build:** Maven, npm
+- **CI/CD (Future):** GitHub Actions or GitLab CI
+- **Observability (Future):** Prometheus, Grafana, Loki
 
 ---
 
-## 📁 Repos & Structure (suggested)
-
+## 📁 Repository Structure
 ```
-/app
-  /services
-    /entrance-cockpit-backend  (spring)
-    /core-operational-backend  (spring)
-    /cache-loader-backend      (spring)
-    /telemetry-messaging-backend (node)
-    /iot
-      /badge-sensor-mock (node)
-      /door-lock-mock    (node)
-  /web/entrance-cockpit-front  (static HTML/CSS/JS or minimal framework)
-/deploy
-  docker-compose.yml
-  nginx/
-    nginx.conf
-  kafka/
-    topics-init.sh
-  postgres/
-    init.sql
-  mosquitto/
-    config/
-      mosquitto.conf
-
-  grafana/ prometheus/ (optional later)
-/docs
-  README.md
-  microscope.md
-Makefile
-```
-
----
+/
+├── app/
+│   ├── services/
+│   │   ├── core-operational-backend/    (Spring Boot)
+│   │   ├── entrance-cockpit-backend/    (Spring Boot)
+│   │   └── cache-loader-backend/        (Spring Boot)
+│   ├── iot/
+│   │   └── door-lock-mock/              (Node.js)
+│   └── web/
+│       └── entrance-cockpit-front/      (Vite/React)
+├── deploy/
+│   └── compose/
+│       ├── docker-compose.all.yml
+│       └── .env
+├── nginx/
+│   └── nginx.conf
+├── kafka/
+├── postgres/
+│   └── init.sql
+├── mosquitto/
+│   └── config/
+│       └── mosquitto.conf
+└── docs/
+    └── README.md
 
 ## 🗺️ Phased Roadmap
 
-### Phase 0 — Bootstrap
-- Create repo layout, base Dockerfiles, Compose with: PostgreSQL, Redis, Kafka+ZooKeeper, Mosquitto, NGINX.
-- Health-check containers up; expose NGINX 80/443; seed DB with sample users.
+### Phase 1 — Foundation ✅ (Complete)
 
-### Phase 1 — Service Skeletons
-- Spring Boot scaffolds for **core-operational**, **cockpit-backend**, **cache-loader**.
-- Node.js scaffold for **telemetry-messaging-backend**.
-- Define common models/DTOs, error handling, and config (env‑driven).
+- Repo layout created.
+- Base Dockerfiles and Docker Compose file for all infrastructure (Postgres, Redis, Kafka, Mosquitto, NGINX).
+- Health checks confirm all containers are up.
 
-### Phase 2 — Messaging & Topics
-- MQTT topics: `iot/entrance/badge`, `iot/entrance/decision`.
-- Kafka topics: `attempt-logs`, `entrance-logs`.
-- Implement Node bridge: MQTT → Kafka (`attempt-logs`) and Core → MQTT for decisions.
+### Phase 2 — Core Logic ✅ (Complete)
 
-### Phase 3 — Core Flow
-- Redis-first badge validation with PostgreSQL fallback.
-- Publish decision to MQTT; write structured events to Kafka.
-- Add **cache-loader** job that syncs DB → Redis periodically.
+- Spring Boot services for **core-operational**, **cockpit-backend**, and **cache-loader** are implemented.
+- **Cache Loader** successfully syncs PostgreSQL → Redis.
+- **Core Backend** implements Redis-first badge validation with a PostgreSQL fallback.
+- **Core Backend** publishes decisions to MQTT and audit logs to Kafka.
 
-### Phase 4 — Cockpit
-- Static UI served via NGINX or spring static.
-- **cockpit-backend** exposes WebSocket for live logs (from Kafka consumer) and manual authorize endpoint → publish decision.
+### Phase 3 — UI & Integration ✅ (Complete)
 
-### Phase 5 — Observability & CI
-- Add Prometheus/Grafana and Loki stack (optional).
-- Wire dashboards: Kafka lag, service JVM metrics, MQTT msg rate, NGINX.
-- GitHub Actions: build images, run unit tests, spin compose for integration tests.
+- Vite/React UI is created and served via NGINX.
+- **Cockpit Backend** consumes Kafka events and streams them to the UI via SSE.
+- The full manual override flow (UI → Cockpit Backend → Core Backend → MQTT/Kafka) is implemented and working.
 
-### Phase 6 — Hardening & Extras
-- Secrets handling, TLS between NGINX and services, rate limiting.
-- Chaos/fault tests (drop Kafka/MQTT briefly), backpressure handling.
-- Persisted volumes and data retention policies.
+### Phase 4 — Hardening & Observability 🔜 (Future)
+
+- Add Prometheus/Grafana for monitoring service metrics and Kafka lag.
+- Implement robust secrets handling (e.g., Docker secrets).
+- Add integration tests using Testcontainers.
+- Set up a CI/CD pipeline using GitHub Actions to build and test on every commit.
 
 ---
 
-## ✅ Acceptance Criteria (selected)
+## ✅ Acceptance Criteria (Met)
 
-- A badge scan from the mock results in:  
-  **(a)** a decision event to the door-lock mock, **(b)** an entry in `attempt-logs`, and **(c)** a cockpit UI update in < 2s.
-- Manual authorize from cockpit immediately opens the lock mock (decision event).
-- Cache loader refreshes Redis on schedule; DB updates reflect in cache.
-- All services build & run via `docker compose up` with one command.
+- A badge scan (`curl`) results in:
+    - **(a)** an `OPEN` or `DENY` message in the `door-lock-mock` log.
+    - **(b)** an event published to the `access-events` Kafka topic.
+    - **(c)** a real-time update in the Cockpit UI's "Live Stream".
+- A manual override from the cockpit UI immediately triggers the door lock and a UI update.
+- The cache loader successfully populates the Redis cache on startup.
+- The entire stack starts cleanly with `docker compose up -d --build`.
 
----
+## ▶️ Quickstart
+```bash
+# 1. Start the entire application stack in the background
+# The --build flag is only needed on the first run or after code changes.
+docker compose -f deploy/compose/docker-compose.all.yml up -d --build
 
-## 🧪 Testing Strategy
+# 2. (One-time) Run the cache loader to populate Redis
+docker compose -f deploy/compose/docker-compose.all.yml up cache-loader-backend
 
-- Unit tests for service logic (Spring/Node).  
-- Integration tests using Testcontainers (Java) and Docker Compose.  
-- Contract tests for message schemas (MQTT payloads, Kafka Avro/JSON).
+# 3. Open the Cockpit UI in your browser
+# (Give the services ~30 seconds to fully initialize)
+open http://localhost:8080/cockpit/
 
----
+# 4. Tail the logs of all services
+docker compose -f deploy/compose/docker-compose.all.yml logs -f
 
-## ▶️ Quickstart (once implemented)
+# 5. Simulate a badge scan (in a new terminal)
+curl http://localhost:8080/api/people/B-0001
+```
+
+## 🔍 Monitoring & Debugging
+
+### Check Service Health
+```bash
+# View all running containers
+docker compose -f deploy/compose/docker-compose.all.yml ps
+
+# Check logs for a specific service
+docker compose -f deploy/compose/docker-compose.all.yml logs -f core-operational-backend
+```
+### Verify Data Flow
+```bash
+# Check Redis cache contents
+docker exec -it redis redis-cli
+> KEYS *
+> GET person:B-0001
+
+# Check PostgreSQL data
+docker exec -it postgres psql -U entrance_user -d entrance_db
+> SELECT * FROM people;
+
+# Monitor Kafka topics
+docker exec -it kafka kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic access-events \
+  --from-beginning
+```
+### MQTT Testing
+```bash
+# Subscribe to door decisions
+docker exec -it mosquitto mosquitto_sub -t "iot/entrance/decision"
+```
+
+## 🛠️ Development
+
+### Rebuild a Single Service
+```bash
+docker compose -f deploy/compose/docker-compose.all.yml up -d --build core-operational-backend
+```
+
+### Stop All Services
+
+bash
 
 ```bash
-# 1) Build all images
-make build
+docker compose -f deploy/compose/docker-compose.all.yml down
+```
 
-# 2) Start stack
-docker compose -f deploy/docker-compose.yml up -d
+### Clean Up (Remove volumes)
 
-# 3) Tail logs
-docker compose -f deploy/docker-compose.yml logs -f
+bash
 
-# 4) Open Cockpit
-open http://localhost:8080  # or through NGINX http://localhost
+```bash
+docker compose -f deploy/compose/docker-compose.all.yml down -v
 ```
 
 ---
 
-## 📚 Docs
+## 📝 API Endpoints
 
-- `docs/microscope.md` — step-by-step checklist (execution plan)
-- `docs/architecture.drawio` — diagram source
-- `docs/api/*.md` — REST/WebSocket contracts
-- `docs/messaging/*.md` — MQTT/Kafka schemas & topics
+### Core Operational Backend
+
+- `GET /api/people/{badgeId}` — Validate badge and trigger entrance flow
+- `POST /api/core/manual/open` — Manual override to open door
+
+### Entrance Cockpit Backend
+
+- `GET /api/cockpit/events/stream` — SSE endpoint for real-time events
+- `POST /api/cockpit/manual/open` — Manual override from UI
+
+---
+
+## 🚀 Future Enhancements
+
+- **Multi-entrance support** — Scale to multiple doors with different access policies
+- **Advanced analytics** — Track peak usage times, denied access patterns
+- **Role-based access** — Different badge types with different permissions
+- **Visitor management** — Temporary badges with expiration
+- **Integration tests** — Comprehensive test suite with Testcontainers
+- **Performance testing** — Load testing with JMeter or Gatling
