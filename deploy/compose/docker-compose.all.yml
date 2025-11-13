@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: ${POSTGRES_VERSION:-15-alpine}
+    image: postgres:${POSTGRES_VERSION:-15-alpine}
     container_name: badge-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -70,7 +70,7 @@ services:
     ports:
       - "1883:1883"
     volumes:
-      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ../mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquittodata:/mosquitto/data
       - mosquittolog:/mosquitto/log
     networks:
@@ -148,6 +148,8 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    ports:
+    - "8088:8082"
     networks:
       - backend
 
