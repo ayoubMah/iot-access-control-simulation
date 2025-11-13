@@ -10,7 +10,8 @@ export default function ManualOperations() {
 const manualEvent = async (eventType: "open" | "close") => {
   try {
     setLoading(true);
-    const res = await fetch(`/api/manual/${eventType}`, { method: "POST" });
+    // CORRECTED: Added the '/cockpit' prefix to match the Nginx route.
+    const res = await fetch(`/api/cockpit/manual/${eventType}`, { method: "POST" });
     if (res.ok) {
       toast.success(`Door ${eventType === "open" ? "opened" : "closed"} successfully`);
     } else {
