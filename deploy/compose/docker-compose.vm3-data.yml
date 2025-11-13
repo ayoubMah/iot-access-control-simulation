@@ -1,0 +1,55 @@
+services:
+  postgres:
+    # This is a pre-built, official image.
+    image: postgres:${POSTGRES_VERSION:-15-alpine}
+    container_name: badge-postgres
+    ports:
+      - "5432:5432"
+    env_file: .env
+    volumes:
+      - ../postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - data-net
+
+  redis:
+    # This is a pre-built, official image.
+    image: redis:${REDIS_VERSION:-7-alpine}
+    container_name: badge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - data-net
+
+  # Optional monitoring stack
+  prometheus:
+    # This is a pre-built, official image.
+    image: prom/prometheus
+    container_name: badge-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - data-net
+
+  grafana:
+    # This is a pre-built, official image.
+    image: grafana/grafana
+    container_name: badge-grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - data-net
+    depends_on:
+      - prometheus
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  data-net:
+    driver: bridge

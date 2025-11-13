@@ -1,0 +1,54 @@
+services:
+  zookeeper:
+    # This is a pre-built, official image. No 'build' step is needed.
+    image: confluentinc/cp-zookeeper:${CONFLUENT_VERSION:-7.5.0}
+    container_name: badge-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeperdata:/var/lib/zookeeper/data
+    networks:
+      - messaging-net
+
+  kafka:
+    # This is a pre-built, official image.
+    image: confluentinc/cp-kafka:${CONFLUENT_VERSION:-7.5.0}
+    container_name: badge-kafka
+    ports:
+      - "9092:9092"
+    env_file: .env
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${MESSAGING_HOST}:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    networks:
+      - messaging-net
+    depends_on:
+      - zookeeper
+
+  mosquitto:
+    # This is a pre-built, official image.
+    image: eclipse-mosquitto:${MOSQUITTO_VERSION:-2}
+    container_name: badge-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ../mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquittodata:/mosquitto/data
+    networks:
+      - messaging-net
+
+volumes:
+  zookeeperdata:
+  kafkadata:
+  mosquittodata:
+
+networks:
+  messaging-net:
+    driver: bridge

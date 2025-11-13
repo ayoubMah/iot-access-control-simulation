@@ -1,0 +1,56 @@
+services:
+  nginx:
+    image: nginx:${NGINX_VERSION:-alpine}
+    container_name: badge-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Mount your configuration into the official image
+      - ../nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - app-net
+    depends_on:
+      - core-operational-backend
+      - entrance-cockpit-backend
+      - cockpit-front
+
+  core-operational-backend:
+    # CORRECTED: Build the image from source code instead of pulling from a placeholder registry.
+    build:
+      context: ../../app/services/core-operational-backend
+    container_name: core-operational-backend
+    env_file: .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${DATA_HOST}:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_REDIS_HOST=${DATA_HOST}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=${MESSAGING_HOST}:9092
+    networks:
+      - app-net
+
+  entrance-cockpit-backend:
+    # CORRECTED: Build the image from source code.
+    build:
+      context: ../../app/services/entrance-cockpit-backend
+    container_name: entrance-cockpit-backend
+    env_file: .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=${MESSAGING_HOST}:9092
+    networks:
+      - app-net
+
+  cockpit-front:
+    # CORRECTED: Build the image from source code.
+    build:
+      context: ../../app/web/entrance-cockpit-front
+    container_name: badge-cockpit-front
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
