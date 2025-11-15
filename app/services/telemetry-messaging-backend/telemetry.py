@@ -4,8 +4,6 @@ import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 import os
 
-load_dotenv() 
-
 KAFKA_URL = os.getenv("KAFKA_URL")
 MQTT_BADGE = os.getenv("MQTT_BADGE")
 MQTT_DOOR = os.getenv("MQTT_DOOR")

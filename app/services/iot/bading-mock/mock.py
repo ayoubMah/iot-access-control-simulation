@@ -6,7 +6,7 @@ from faker import Faker
 
 BROKER = "mqtt-broker"   # service name we'll define in docker-compose
 PORT = 1883
-TOPIC = "entrance/badge"
+TOPIC = "iot/entrance/badge"
 fake = Faker()
 BADGES = ["EMP001", "EMP002", "EMP003", "VISITOR01"]
 
@@ -22,7 +22,6 @@ try:
             "badgeId": badgeId,
             "timestamp": time.time(),
             "name": name,
-            "eventType": "badging"
         })
         print(f"🔘 Badge scanned: {badgeId}")
         client.publish(TOPIC, payload)

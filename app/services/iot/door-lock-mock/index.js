@@ -2,7 +2,7 @@ import mqtt from "mqtt";
 import chalk from "chalk";
 
 const brokerUrl = "mqtt://mosquitto:1883"; // matches docker-compose service name
-const topic = "iot/entrance/decision";
+const topic = "iot/entrance/door";
 
 // Connect to the MQTT broker
 const client = mqtt.connect(brokerUrl);
