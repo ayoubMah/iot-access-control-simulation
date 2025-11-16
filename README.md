@@ -135,6 +135,7 @@ graph TD
 │       └── mosquitto.conf
 └── docs/
     └── README.md
+```
 
 ## 🗺️ Phased Roadmap
 
