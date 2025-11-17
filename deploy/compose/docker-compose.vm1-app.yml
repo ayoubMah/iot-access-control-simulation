@@ -20,14 +20,6 @@ services:
     build:
       context: ../../app/services/core-operational-backend
     container_name: core-operational-backend
-    env_file: .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://${DATA_HOST}:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
-      - SPRING_REDIS_HOST=${DATA_HOST}
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=${MESSAGING_HOST}:9092
     networks:
       - app-net
 
@@ -47,14 +39,12 @@ services:
     build:
       context: ../../app/services/cache-loader-backend
     container_name: cache-loader-backend
-    depends_on:
-      - redis
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - SPRING_REDIS_HOST=redis
     networks:
-      - backend
-      
+      - app-net
+
   cockpit-front:
     # CORRECTED: Build the image from source code.
     build:
@@ -62,8 +52,8 @@ services:
     container_name: badge-cockpit-front
     networks:
       - app-net
-  
-  
+
+
 networks:
   app-net:
     driver: bridge

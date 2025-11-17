@@ -4,6 +4,6 @@ WORKDIR /app
 
 COPY mock.py .
 
-RUN pip install paho-mqtt
+RUN pip install paho-mqtt faker
 
 ENTRYPOINT ["python", "mock.py"]

@@ -14,19 +14,16 @@ services:
       - messaging-net
 
   kafka:
-    # This is a pre-built, official image.
-    image: confluentinc/cp-kafka:${CONFLUENT_VERSION:-7.5.0}
+    image: confluentinc/cp-kafka:7.5.0
     container_name: kafka
     ports:
       - "9092:9092"
-    env_file: .env
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${MESSAGING_HOST}:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    volumes:
-      - kafkadata:/var/lib/kafka/data
     networks:
       - messaging-net
     depends_on:
@@ -54,8 +51,8 @@ services:
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
     networks:
-      - backend
-  
+      - messaging-net
+
   badging-mock:
     build:
       context: ../../app/services/iot/badging-mock
@@ -63,7 +60,7 @@ services:
     depends_on:
       - mosquitto
     networks:
-      - backend
+      - messaging-net
 
   telemetry-backend:
     build:
