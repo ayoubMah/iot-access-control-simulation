@@ -67,15 +67,19 @@ services:
       context: ../../app/services/telemetry-messaging-backend
     container_name: telemetry-backend
     environment:
-      - KAFKA_URL=kafka
-      - MQTT_BROKER_URL=http://localhost
-      - MQTT_BROKER_PORT=1883
-      - MQTT_BADGE=iot/entrance/badge
-      - MQTT_DOOR=iot/entrance/door
-      - KAFKA_BADGE=entrance_attempts
-      - KAFKA_DOOR=entrance_attempts
+      KAFKA_URL: "kafka:9092"
+      MQTT_BROKER_HOST: "mosquitto"
+      MQTT_BROKER_PORT: 1883
+      MQTT_BADGE: "iot/entrance/badge"
+      MQTT_DOOR: "iot/entrance/door"
+      KAFKA_BADGE: "entrance_attempts"
+      KAFKA_DOOR: "entrance_logs"
     networks:
       - messaging-net
+    depends_on:
+      - kafka
+      - mosquitto
+      
 volumes:
   zookeeperdata:
   kafkadata:
