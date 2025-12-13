@@ -30,14 +30,4 @@ public class ManualControlController {
 
         return ResponseEntity.ok().build();
     }
-
-    @PostMapping("/close")
-    public ResponseEntity<Void> closeDoor() {
-        boolean isAccessGranted = false;
-
-        kafkaProducer.publishBadgeEvent("MANUAL-CLOSE", isAccessGranted);
-        mqttPublisher.publishDecision("MANUAL-CLOSE", isAccessGranted);
-
-        return ResponseEntity.ok().build();
-    }
 }

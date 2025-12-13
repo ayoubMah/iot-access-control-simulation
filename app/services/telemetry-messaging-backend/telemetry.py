@@ -2,15 +2,11 @@ import json
 import os
 from confluent_kafka import Producer
 import paho.mqtt.client as mqtt
-from dotenv import load_dotenv
+from datetime import datetime, timezone
 
-# Load env vars from Docker
-load_dotenv()
+KAFKA_URL = os.getenv("KAFKA_URL", "kafka:9093")
 
-# --- ENV VARIABLES ---
-KAFKA_URL = os.getenv("KAFKA_URL", "kafka:9092")
-
-MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "mqtt-broker")
+MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "mosquitto")
 MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
 
 MQTT_BADGE = os.getenv("MQTT_BADGE", "iot/entrance/badge")
@@ -19,44 +15,58 @@ MQTT_DOOR = os.getenv("MQTT_DOOR", "iot/entrance/door")
 KAFKA_BADGE = os.getenv("KAFKA_BADGE", "entrance_attempts")
 KAFKA_DOOR = os.getenv("KAFKA_DOOR", "entrance_logs")
 
-# --- KAFKA PRODUCER ---
 producer = Producer({'bootstrap.servers': KAFKA_URL})
 
-# --- PROCESS MQTT MESSAGE ---
+
+def normalize_payload(topic, payload):
+    # Regular badge scan → open event
+    if topic == MQTT_BADGE:
+        return {
+            "badgeId": payload.get("badge_id"),
+            "name": payload.get("personName", "Unknown"),
+            "timestamp": payload.get("timestamp")
+        }
+
+    # Manual Open
+    if topic == MQTT_DOOR:
+        return {
+            "badgeId": None,
+            "name": "Manual Trigger",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+    print(f"[WARN] Unknown MQTT topic {topic}")
+    return None
+
+
 def on_message(client, userdata, msg):
     try:
-        payload_str = msg.payload.decode("utf-8")
-        payload = json.loads(payload_str)
+        raw = msg.payload.decode("utf-8")
+        payload = json.loads(raw)
 
-        if msg.topic == MQTT_BADGE:
-            kafka_topic = KAFKA_BADGE
-        elif msg.topic == MQTT_DOOR:
-            kafka_topic = KAFKA_DOOR
-        else:
-            print(f"[WARN] Unknown MQTT topic: {msg.topic}")
+        event = normalize_payload(msg.topic, payload)
+        if event is None:
             return
 
-        producer.produce(kafka_topic, json.dumps(payload).encode("utf-8"))
+        topic = KAFKA_DOOR if msg.topic == MQTT_DOOR else KAFKA_BADGE
+
+        producer.produce(topic, json.dumps(event).encode("utf-8"))
         producer.flush()
 
-        print(f"[OK] MQTT[{msg.topic}] → Kafka[{kafka_topic}] :: {payload}")
+        print(f"[OK] MQTT[{msg.topic}] → Kafka[{topic}] :: {event}")
 
     except Exception as e:
-        print("[ERROR] Failed to process MQTT message:", e)
+        print("[ERROR] Failed processing MQTT message:", e)
 
-# --- MQTT CLIENT ---
+
 client = mqtt.Client()
-
 client.on_message = on_message
 
-print(f"[BOOT] Connecting to MQTT broker {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
+print(f"[BOOT] MQTT connect {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
 client.connect(MQTT_BROKER_HOST, MQTT_BROKER_PORT)
 
 client.subscribe(MQTT_BADGE)
 client.subscribe(MQTT_DOOR)
 
-print(f"[BOOT] Subscribed to topics: {MQTT_BADGE}, {MQTT_DOOR}")
-print("[RUNNING] Telemetry backend started. Waiting for MQTT events...")
-
-# Start MQTT loop
+print("[RUNNING] Telemetry backend running.")
 client.loop_forever()

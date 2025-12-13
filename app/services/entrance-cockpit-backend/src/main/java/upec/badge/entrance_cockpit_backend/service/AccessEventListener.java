@@ -8,7 +8,9 @@ import upec.badge.entrance_cockpit_backend.dto.AccessEventDTO;
 
 @Service
 public class AccessEventListener {
+
     private static final Logger logger = LoggerFactory.getLogger(AccessEventListener.class);
+
     private final SseService sseService;
 
     public AccessEventListener(SseService sseService) {
@@ -16,9 +18,12 @@ public class AccessEventListener {
     }
 
     @KafkaListener(topics = "${kafka.topic.access-events}", groupId = "cockpit-group")
-    public void listenToAccessEvents(AccessEventDTO event) {
-        logger.info("Received event from Kafka: {}", event);
-        // Forward the received event to all connected SSE clients.
+    public void listen(AccessEventDTO event) {
+
+        logger.info("🔥 Received access event from Kafka: {}", event);
+
+        logger.info("📤 Forwarding event to SSE service...");
         sseService.sendEventToAll(event);
+        logger.info("📤 SSE forwarding call finished.");
     }
 }

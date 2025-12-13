@@ -9,16 +9,15 @@ export default function GateAnimation({ lastEvent }: GateAnimationProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (lastEvent) {
-      if (lastEvent.state === "open") {
-        setIsOpen(true);
-        // Auto-close after 5 seconds
-        const timeout = setTimeout(() => setIsOpen(false), 5000);
-        return () => clearTimeout(timeout);
-      } else {
-        setIsOpen(false);
-      }
-    }
+    if (!lastEvent) return;
+
+    // ❗ Any event triggers opening
+    setIsOpen(true);
+
+    // Auto-close after 5 seconds
+    const timeout = setTimeout(() => setIsOpen(false), 5000);
+
+    return () => clearTimeout(timeout);
   }, [lastEvent]);
 
   return (
