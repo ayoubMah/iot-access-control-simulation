@@ -1,6 +1,7 @@
 package upec.badge.core_operational_backend.config;
 
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.annotation.ServiceActivator;
@@ -14,12 +15,25 @@ import org.springframework.messaging.MessageHandler;
 @Configuration
 public class MqttConfig {
 
+    // Inject values from application.properties / env vars
+    @Value("${MQTT_HOST}")
+    private String mqttHost;
+
+    @Value("${MQTT_PORT}")
+    private int mqttPort;
+
+    @Value("${mqtt.topic:iot/entrance/door}")
+    private String mqttTopic;
+
     @Bean
     public MqttPahoClientFactory mqttClientFactory() {
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
+
         MqttConnectOptions options = new MqttConnectOptions();
-        options.setServerURIs(new String[] { "tcp://mosquitto:1883" });
+        String uri = "tcp://" + mqttHost + ":" + mqttPort;
+        options.setServerURIs(new String[]{uri});
         options.setCleanSession(true);
+
         factory.setConnectionOptions(options);
         return factory;
     }
@@ -27,10 +41,12 @@ public class MqttConfig {
     @Bean
     @ServiceActivator(inputChannel = "mqttOutboundChannel")
     public MessageHandler mqttOutbound(MqttPahoClientFactory mqttClientFactory) {
-        MqttPahoMessageHandler messageHandler = new MqttPahoMessageHandler("coreOperationalBackendClientId", mqttClientFactory);
-        messageHandler.setAsync(true);
-        messageHandler.setDefaultTopic("iot/entrance/decision");
-        return messageHandler;
+        MqttPahoMessageHandler handler =
+                new MqttPahoMessageHandler("coreOperationalBackendClientId", mqttClientFactory);
+
+        handler.setAsync(true);
+        handler.setDefaultTopic(mqttTopic);
+        return handler;
     }
 
     @Bean

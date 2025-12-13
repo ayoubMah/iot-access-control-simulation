@@ -5,7 +5,7 @@ import { useDoorEvents } from "../hooks/useDoorEvents"
 import { doorEventsStore, type DoorEvent } from "../stores/DoorEventsStore"
 
 export default function DoorEventToaster({ onEvent }: { onEvent?: (data: any) => void }) {
-  const event: DoorEvent = useDoorEvents()
+  const event: DoorEvent | null = useDoorEvents()
   useEffect(() => {
     if (!event) return;
     doorEventsStore.addEvent(event);

@@ -7,7 +7,7 @@ import { Badge } from "./ui/badge";
 
 function DoorStream() {
   const isConnected = doorEventsStore.connectionStatus == 'connected';
-  const events = doorEventsStore.getEvents()!;
+  const events = doorEventsStore.events!;
 
   return (
     <Card>

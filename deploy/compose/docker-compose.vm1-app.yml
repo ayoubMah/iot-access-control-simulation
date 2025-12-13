@@ -6,7 +6,6 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # Mount your configuration into the official image
       - ../nginx/conf.d/:/etc/nginx/conf.d/
     networks:
       - app-net
@@ -16,22 +15,24 @@ services:
       - cockpit-front
 
   core-operational-backend:
-    # CORRECTED: Build the image from source code instead of pulling from a placeholder registry.
     build:
       context: ../../app/services/core-operational-backend
     container_name: core-operational-backend
-    networks:
-      - app-net
-
-  entrance-cockpit-backend:
-    # CORRECTED: Build the image from source code.
-    build:
-      context: ../../app/services/entrance-cockpit-backend
-    container_name: entrance-cockpit-backend
-    env_file: .env
+    ports:
+      - "8081:8081"
     environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=${MESSAGING_HOST}:9092
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - MQTT_HOST=${MQTT_HOST}
+      - MQTT_PORT=${MQTT_PORT}
     networks:
       - app-net
 
@@ -40,19 +41,37 @@ services:
       context: ../../app/services/cache-loader-backend
     container_name: cache-loader-backend
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_REDIS_HOST=redis
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    networks:
+      - app-net
+
+  entrance-cockpit-backend:
+    build:
+      context: ../../app/services/entrance-cockpit-backend
+    container_name: entrance-cockpit-backend
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+
+      - MQTT_HOST=${MQTT_HOST}
+      - MQTT_PORT=${MQTT_PORT}
+
+      - CORE_BACKEND_URL=${CORE_BACKEND_URL}
+      - KAFKA_DOOR_OPENING_TOPIC=${KAFKA_DOOR_OPENING_TOPIC}
     networks:
       - app-net
 
   cockpit-front:
-    # CORRECTED: Build the image from source code.
     build:
       context: ../../app/web/entrance-cockpit-front
     container_name: badge-cockpit-front
     networks:
       - app-net
-
 
 networks:
   app-net:

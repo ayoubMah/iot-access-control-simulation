@@ -21,7 +21,7 @@ function App() {
   useEffect(() => {
     // 2️⃣ Subscribe to MobX store changes
     const disposer = autorun(() => {
-      const events = doorEventsStore.getEvents();
+      const events = doorEventsStore.events;
       if (events.length > 0) {
         setLastEvent(events[0]);
       }

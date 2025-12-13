@@ -22,9 +22,4 @@ public class ManualController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/close")
-    public ResponseEntity<Void> closeDoor() {
-        manualControlService.sendCloseCommand();
-        return ResponseEntity.ok().build();
-    }
 }

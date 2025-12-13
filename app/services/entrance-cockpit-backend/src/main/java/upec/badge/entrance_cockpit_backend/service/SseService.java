@@ -12,37 +12,41 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
 public class SseService {
+
     private static final Logger logger = LoggerFactory.getLogger(SseService.class);
 
-    // Use a thread-safe list to manage emitters, preventing ConcurrentModificationException.
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 
     public void addEmitter(SseEmitter emitter) {
-        this.emitters.add(emitter);
-        logger.info("New SSE client connected. Total clients: {}", emitters.size());
 
-        // Remove emitter from list on completion or timeout to prevent memory leaks.
+        logger.info("🟢 New SSE client connected. Total: {}", emitters.size() + 1);
+        emitters.add(emitter);
+
         emitter.onCompletion(() -> {
-            this.emitters.remove(emitter);
-            logger.info("SSE client disconnected. Total clients: {}", emitters.size());
+            emitters.remove(emitter);
+            logger.info("🔴 SSE client disconnected. Total now: {}", emitters.size());
         });
+
         emitter.onTimeout(() -> {
+            emitters.remove(emitter);
             emitter.complete();
-            this.emitters.remove(emitter);
-            logger.warn("SSE client timed out. Total clients: {}", emitters.size());
+            logger.warn("⏳ SSE client timed out. Total now: {}", emitters.size());
         });
     }
 
-    // Method to broadcast an event to all connected clients.
     public void sendEventToAll(AccessEventDTO event) {
-        logger.info("Broadcasting event to {} clients: {}", emitters.size(), event);
+
+        logger.info("📡 Broadcasting SSE event to {} clients: {}", emitters.size(), event);
+
         for (SseEmitter emitter : emitters) {
             try {
-                emitter.send(SseEmitter.event().name("access-event").data(event));
+                logger.info("➡️ Sending SSE to emitter {}", emitter);
+                emitter.send(SseEmitter.event()
+                        .name("access-event")
+                        .data(event));
             } catch (IOException e) {
-                logger.error("Error sending event to client. Removing emitter.", e);
-                // If sending fails, assume client is disconnected and remove them.
-                this.emitters.remove(emitter);
+                logger.error("❌ Error sending SSE → removing emitter. Cause: {}", e.getMessage());
+                emitters.remove(emitter);
             }
         }
     }
