@@ -22,17 +22,18 @@ def normalize_payload(topic, payload):
     # Regular badge scan → open event
     if topic == MQTT_BADGE:
         return {
-            "badgeId": payload.get("badge_id"),
-            "name": payload.get("personName", "Unknown"),
+            "badgeId": payload.get("badgeId"),
             "timestamp": payload.get("timestamp")
         }
 
     # Manual Open
     if topic == MQTT_DOOR:
         return {
-            "badgeId": None,
-            "name": "Manual Trigger",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "badgeId": payload.get("badgeId"),
+            "firstName": payload.get("firstName"),
+            "lastName": payload.get("lastName"),
+            "eventType": payload.get("eventType"),
+            "timestamp": payload.get("timestamp"),
         }
 
     print(f"[WARN] Unknown MQTT topic {topic}")

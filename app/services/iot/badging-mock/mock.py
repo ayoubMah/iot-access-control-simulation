@@ -8,7 +8,6 @@ BROKER = "mqtt-broker"   # service name we'll define in docker-compose
 PORT = 1883
 TOPIC = "iot/entrance/badge"
 fake = Faker()
-BADGES = ["EMP001", "EMP002", "EMP003", "VISITOR01"]
 
 client = mqtt.Client(protocol=mqtt.MQTTv311)
 client.connect(BROKER, PORT, 60)
@@ -16,12 +15,10 @@ client.loop_start()
 
 try:
     while True:
-        badgeId = random.choice(BADGES)
-        name = fake.name()
+        badgeId = random.randint(1,200)
         payload = json.dumps({
             "badgeId": badgeId,
             "timestamp": time.time(),
-            "name": name,
         })
         print(f"🔘 Badge scanned: {badgeId}")
         client.publish(TOPIC, payload)

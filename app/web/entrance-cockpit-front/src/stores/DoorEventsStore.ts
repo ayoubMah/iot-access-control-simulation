@@ -2,8 +2,9 @@ import { makeAutoObservable } from "mobx";
 
 export interface DoorEvent {
   badgeId?: string | null;
-  name: string;
-  state?: "open";
+  firstName: string;
+  lastName: string;
+  eventType: 'badge' | 'manual';
   timestamp: string;
 }
 
@@ -35,8 +36,9 @@ class DoorEventsStore {
 
         const event: DoorEvent = {
           badgeId: data.badgeId ?? null,
-          name: data.name ?? "Unknown",
-          state: "open",
+          firstName: data.firstName ?? "Unknown",
+          lastName: data.lastName ,
+          eventType: data.eventType,
           timestamp: new Date().toISOString(),
         };
 
