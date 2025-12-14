@@ -37,13 +37,18 @@ function DoorStream() {
               className="flex items-center gap-4 p-4 bg-muted rounded-lg mb-4"
             >
               <DoorOpen className="h-8 w-8 text-green-600" />
-              <div>
+              {event.eventType === 'badge' ? (<div>
                 <p className="font-medium">{`${event.firstName} ${event.lastName}`}</p>
                 <p className="text-sm text-muted-foreground">
                   "Opened the door"
                   • {new Date(event.timestamp).toLocaleTimeString()}
                 </p>
-              </div>
+              </div>) : (<div>
+                <p className="text-sm text-muted-foreground">
+                  "Door opened manually"
+                  • {new Date(event.timestamp).toLocaleTimeString()}
+                </p>
+              </div>)}
             </div>
           ))
         ) : (
