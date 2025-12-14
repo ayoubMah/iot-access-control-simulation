@@ -1,27 +1,28 @@
 package upec.badge.cache_loader_backend.runner;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-import upec.badge.cache_loader_backend.model.RegisteredPerson;
-import upec.badge.cache_loader_backend.repository.RegisteredPersonRepository;
 
-import java.util.List;
+import upec.badge.cache_loader_backend.model.Person;
+import upec.badge.cache_loader_backend.repository.PersonRepository;
 
 @Component
 public class CacheLoadingRunner implements CommandLineRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(CacheLoadingRunner.class);
 
-    private final RegisteredPersonRepository personRepository;
+    private final PersonRepository personRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ConfigurableApplicationContext context;
 
     public CacheLoadingRunner(
-            RegisteredPersonRepository personRepository,
+            PersonRepository personRepository,
             RedisTemplate<String, Object> redisTemplate,
             ConfigurableApplicationContext context
     ) {
@@ -36,7 +37,7 @@ public class CacheLoadingRunner implements CommandLineRunner {
 
         try {
             // 1. Fetch all people from PostgreSQL
-            List<RegisteredPerson> people = personRepository.findAll();
+            List<Person> people = personRepository.findAll();
             if (people.isEmpty()) {
                 logger.warn("No registered people found in the database. Cache will be empty.");
             } else {
@@ -44,12 +45,12 @@ public class CacheLoadingRunner implements CommandLineRunner {
             }
 
             // 2. Load each person into the Redis cache
-            for (RegisteredPerson person : people) {
+            for (Person person : people) {
                 // The cache key "people::{badgeId}" must match the format used by @Cacheable
                 // in the core-operational-backend to ensure cache hits.
                 String cacheKey = "people::" + person.getBadgeId();
                 redisTemplate.opsForValue().set(cacheKey, person);
-                logger.debug("Cached person: {}", person.getFullName());
+                logger.debug("Cached person: {}" + person.getFirstName() + " " + person.getLastName());
             }
 
             logger.info("Successfully loaded {} records into Redis.", people.size());

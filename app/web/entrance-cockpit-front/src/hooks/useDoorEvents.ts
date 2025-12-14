@@ -24,7 +24,9 @@ export function useDoorEvents() {
 
         const parsedEvent: DoorEvent = {
           badgeId: data.badgeId ?? undefined,
-          name: data.name ?? "Unknown",
+          firstName: data.firstName,
+          lastName: data.lastName,
+          eventType: data.eventType,
           timestamp: data.timestamp ?? new Date().toISOString(),
         };
 

@@ -1,4 +1,4 @@
-import { DoorOpen, DoorClosed, Wifi, WifiOff } from "lucide-react";
+import { DoorOpen, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { doorEventsStore } from "../stores/DoorEventsStore";
 import { observer } from "mobx-react-lite";
@@ -36,18 +36,11 @@ function DoorStream() {
               key={event.badgeId}
               className="flex items-center gap-4 p-4 bg-muted rounded-lg mb-4"
             >
-              {event.state === "open" ? (
-                <DoorOpen className="h-8 w-8 text-green-600" />
-              ) : (
-                <DoorClosed className="h-8 w-8 text-red-600" />
-              )}
-
+              <DoorOpen className="h-8 w-8 text-green-600" />
               <div>
-                <p className="font-medium">{event.name}</p>
+                <p className="font-medium">{`${event.firstName} ${event.lastName}`}</p>
                 <p className="text-sm text-muted-foreground">
-                  {event.state === "open"
-                    ? "Opened the door"
-                    : "Closed the door"}{" "}
+                  "Opened the door"
                   • {new Date(event.timestamp).toLocaleTimeString()}
                 </p>
               </div>

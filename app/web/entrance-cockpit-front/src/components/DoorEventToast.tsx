@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 import { toast } from "sonner"
-import { DoorOpen, DoorClosed } from "lucide-react"
+import { DoorOpen } from "lucide-react"
 import { useDoorEvents } from "../hooks/useDoorEvents"
 import { doorEventsStore, type DoorEvent } from "../stores/DoorEventsStore"
 
@@ -10,24 +10,22 @@ export default function DoorEventToaster({ onEvent }: { onEvent?: (data: any) =>
     if (!event) return;
     doorEventsStore.addEvent(event);
     onEvent?.({
-      state: event.state,
       timestamp: new Date(event.timestamp).getTime(),
     })
 
-    const Icon = event.state === "open" ? DoorOpen : DoorClosed
-    const title = event.state === "open" ? "Door Opened" : "Door Closed"
+    const title = event.eventType === 'badge' ? "Door Opened" : "Door Opened Manualy";
 
     toast(title, {
       description: (
         <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4" />
+          <DoorOpen className="h-4 w-4" />
           <span>
-            {event.name} •{" "}
+            {event.eventType === 'badge' && <p>{`${event.firstName} ${event.lastName}`} •{" "}</p>}
             {new Date(event.timestamp).toLocaleTimeString()}
           </span>
-        </div>
-      ),
-      duration: 5000,
+        </div>)
+      ,
+      duration: 3800,
     })
   }, [event, onEvent])
 
