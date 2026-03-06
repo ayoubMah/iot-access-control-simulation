@@ -10,32 +10,71 @@ services:
     networks:
       - app-net
     depends_on:
-      - core-operational-backend
+      - core-backend-a # Changed from generic name to specific A
       - entrance-cockpit-backend
       - cockpit-front
 
-  core-operational-backend:
+  # --- CORE A (Primary) ---
+  core-backend-a:
     build:
       context: ../../app/services/core-operational-backend
-    container_name: core-operational-backend
+    container_name: core-backend-a
     ports:
-      - "8081:8081"
+      - "18081:8081" # Moved to safe host port
     environment:
+      - INSTANCE_ID=CORE-A
       - POSTGRES_HOST=${POSTGRES_HOST}
       - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
-
       - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
       - MQTT_HOST=${MQTT_HOST}
       - MQTT_PORT=${MQTT_PORT}
     networks:
+      app-net:
+        aliases:
+          - core-operational-backend # <--- MAGIC: Nginx sees this name
+
+  # --- CORE B (Backup - Cold Standby) ---
+  core-backend-b:
+    build:
+      context: ../../app/services/core-operational-backend
+    container_name: core-backend-b
+    ports:
+      - "18082:8081" # Moved to safe host port
+    environment:
+      - INSTANCE_ID=CORE-B
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - MQTT_HOST=${MQTT_HOST}
+      - MQTT_PORT=${MQTT_PORT}
+    networks:
+      app-net:
+        aliases:
+          - core-operational-backend # <--- MAGIC: Nginx sees this name too
+
+  # --- WATCHDOG ---
+  watchdog:
+    build:
+      context: ../../app/services/watchdog
+    container_name: watchdog
+    depends_on:
+      - core-backend-a
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
       - app-net
 
+  # --- EXISTING SERVICES (Unchanged) ---
   cache-loader-backend:
     build:
       context: ../../app/services/cache-loader-backend
@@ -57,11 +96,9 @@ services:
     container_name: entrance-cockpit-backend
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
-
       - MQTT_HOST=${MQTT_HOST}
       - MQTT_PORT=${MQTT_PORT}
-
-      - CORE_BACKEND_URL=${CORE_BACKEND_URL}
+      - CORE_BACKEND_URL=http://core-operational-backend:8081 # Uses the alias
       - KAFKA_DOOR_OPENING_TOPIC=${KAFKA_DOOR_OPENING_TOPIC}
     networks:
       - app-net
