@@ -1,5 +1,8 @@
 package com.upec.watchdogapp;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -7,45 +10,42 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class WatchdogService {
 
+    private static final Logger log = LoggerFactory.getLogger(WatchdogService.class);
+
     private final RestTemplate restTemplate = new RestTemplate();
 
-    // Config: Who to check, and who to wake up
-    private final String TARGET_URL = "http://core-backend-a:8081/status";
-private final String BACKUP_CONTAINER = "core-backend-b";
+    @Value("${watchdog.target-url}")
+    private String targetUrl;
+
+    @Value("${watchdog.backup-container}")
+    private String backupContainer;
 
     private boolean backupStarted = false;
 
-    // Run this every 5000ms (5 seconds)
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRateString = "${watchdog.check-interval-ms}")
     public void monitor() {
         if (backupStarted) {
-            System.out.println(">> System running on Backup. Monitoring paused.");
+            log.info("System running on backup instance. Monitoring paused.");
             return;
         }
 
         try {
-            // 1. Ping Instance A
-            restTemplate.getForObject(TARGET_URL, String.class);
-            System.out.println(">> Instance A is ALIVE.");
-
+            restTemplate.getForObject(targetUrl, String.class);
+            log.info("Primary instance is ALIVE at {}", targetUrl);
         } catch (Exception e) {
-            // 2. If Ping fails (Exception), switch to B
-            System.err.println("!! Instance A DOWN. Starting Instance B...");
+            log.warn("Primary instance DOWN ({}). Starting backup container '{}'...", e.getMessage(), backupContainer);
             startBackup();
         }
     }
 
     private void startBackup() {
         try {
-            // This runs the shell command: "docker start victim-b"
-            Process process = new ProcessBuilder("docker", "start", BACKUP_CONTAINER).start();
-            process.waitFor(); // Wait for command to finish
-
-            System.out.println("!! Instance B STARTED successfully.");
-            backupStarted = true; // Stop checking A
-
+            Process process = new ProcessBuilder("docker", "start", backupContainer).start();
+            process.waitFor();
+            log.info("Backup container '{}' started successfully.", backupContainer);
+            backupStarted = true;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to start backup container '{}'", backupContainer, e);
         }
     }
 }

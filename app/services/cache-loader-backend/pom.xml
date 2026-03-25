@@ -12,7 +12,7 @@
 	<artifactId>cache-loader-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>cache-loader-backend</name>
-	<description>entrance-cockpit-backend service</description>
+	<description>cache-loader-backend service — one-shot job that populates Redis from PostgreSQL</description>
 	<url/>
 	<licenses>
 		<license/>
