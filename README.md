@@ -4,7 +4,7 @@ A DevOps- and infra-focused simulation of a company entrance system. Employees �
 
 ---
 
-## 🧱 Architecture (high level)
+## Architecture (high level)
 
 
 ```mermaid
@@ -87,7 +87,7 @@ graph TD
 
 ---
 
-## 🔄 End-to-End Data Flow
+## End-to-End Data Flow
 
 1. **Badge Scan (Simulation)** → An external client calls `GET /api/people/{badgeId}` via NGINX, which routes to the **Core Operational Backend**.
 2. **Decision** → The Core Backend checks **Redis** for the badge, with a fallback to **PostgreSQL**. It makes an authorize/deny decision.
@@ -98,7 +98,7 @@ graph TD
 
 ---
 
-## 🧰 Tech Stack
+## Tech Stack
 
 - **Runtime:** Spring Boot (Java 21), Node.js (for IoT mocks)
 - **Frontend:** Vite, React, TypeScript
@@ -109,7 +109,7 @@ graph TD
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 ```
 /
 ├── app/
@@ -137,28 +137,28 @@ graph TD
     └── README.md
 ```
 
-## 🗺️ Phased Roadmap
+## Phased Roadmap
 
-### Phase 1 — Foundation ✅ (Complete)
+### Phase 1 — Foundation (Complete)
 
 - Repo layout created.
 - Base Dockerfiles and Docker Compose file for all infrastructure (Postgres, Redis, Kafka, Mosquitto, NGINX).
 - Health checks confirm all containers are up.
 
-### Phase 2 — Core Logic ✅ (Complete)
+### Phase 2 — Core Logic (Complete)
 
 - Spring Boot services for **core-operational**, **cockpit-backend**, and **cache-loader** are implemented.
 - **Cache Loader** successfully syncs PostgreSQL → Redis.
 - **Core Backend** implements Redis-first badge validation with a PostgreSQL fallback.
 - **Core Backend** publishes decisions to MQTT and audit logs to Kafka.
 
-### Phase 3 — UI & Integration ✅ (Complete)
+### Phase 3 — UI & Integration (Complete)
 
 - Vite/React UI is created and served via NGINX.
 - **Cockpit Backend** consumes Kafka events and streams them to the UI via SSE.
 - The full manual override flow (UI → Cockpit Backend → Core Backend → MQTT/Kafka) is implemented and working.
 
-### Phase 4 — Hardening & Observability 🔜 (Future)
+### Phase 4 — Hardening & Observability (Future)
 
 - Add Prometheus/Grafana for monitoring service metrics and Kafka lag.
 - Implement robust secrets handling (e.g., Docker secrets).
@@ -167,7 +167,7 @@ graph TD
 
 ---
 
-## ✅ Acceptance Criteria (Met)
+## Acceptance Criteria (Met)
 
 - A badge scan (`curl`) results in:
     - **(a)** an `OPEN` or `DENY` message in the `door-lock-mock` log.
@@ -177,7 +177,7 @@ graph TD
 - The cache loader successfully populates the Redis cache on startup.
 - The entire stack starts cleanly with `docker compose up -d --build`.
 
-## ▶️ Quickstart
+## Quickstart
 ```bash
 # 1. Start the entire application stack in the background
 # The --build flag is only needed on the first run or after code changes.
@@ -197,7 +197,7 @@ docker compose -f deploy/compose/docker-compose.all.yml logs -f
 curl http://localhost:8080/api/people/B-0001
 ```
 
-## 🔍 Monitoring & Debugging
+## Monitoring & Debugging
 
 ### Check Service Health
 ```bash
@@ -230,7 +230,7 @@ docker exec -it kafka kafka-console-consumer.sh \
 docker exec -it mosquitto mosquitto_sub -t "iot/entrance/decision"
 ```
 
-## 🛠️ Development
+## Development
 
 ### Rebuild a Single Service
 ```bash
@@ -255,7 +255,7 @@ docker compose -f deploy/compose/docker-compose.all.yml down -v
 
 ---
 
-## 📝 API Endpoints
+## API Endpoints
 
 ### Core Operational Backend
 
@@ -269,7 +269,7 @@ docker compose -f deploy/compose/docker-compose.all.yml down -v
 
 ---
 
-## 🚀 Future Enhancements
+## Future Enhancements
 
 - **Multi-entrance support** — Scale to multiple doors with different access policies
 - **Advanced analytics** — Track peak usage times, denied access patterns
