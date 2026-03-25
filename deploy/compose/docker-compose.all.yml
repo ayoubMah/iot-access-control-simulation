@@ -112,19 +112,27 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       kafka: { condition: service_started }
+      mosquitto: { condition: service_healthy }
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/status || exit 1"]
       interval: 10s
       retries: 5
     environment:
       - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
-      - SPRING_REDIS_HOST=redis
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_ACCESS_EVENTS_TOPIC=access-events
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - INSTANCE_ID=CORE-A
 
 
   cache-loader-backend:
@@ -132,10 +140,17 @@ services:
       context: ../../app/services/cache-loader-backend
     container_name: cache-loader-backend
     depends_on:
-      - redis
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
     environment:
       - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_REDIS_HOST=redis
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     networks:
       - backend
 
@@ -144,12 +159,17 @@ services:
       context: ../../app/services/entrance-cockpit-backend
     container_name: entrance-cockpit-backend
     depends_on:
-      - kafka
+      kafka: { condition: service_started }
+      core-operational-backend: { condition: service_healthy }
     environment:
       - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_ACCESS_EVENTS_TOPIC=access-events
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - CORE_BACKEND_URL=http://core-operational-backend:8081
     ports:
-    - "8088:8082"
+      - "8088:8082"
     networks:
       - backend
 
