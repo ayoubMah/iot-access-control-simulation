@@ -22,10 +22,9 @@ public class MqttDecisionPublisher {
 
     public void publishDoorBadgeOpenEvent(Person person) {
         String message = String.format(
-                "{\"badgeId\":\"%s\",\"firstName\":\"%s\",\"lastName\":\"%s\",\"eventType\":\"%s\",\"timestamp\":\"%s\"}",
+                "{\"badgeId\":\"%s\",\"fullName\":\"%s\",\"eventType\":\"%s\",\"timestamp\":\"%s\"}",
                 person.getBadgeId(),
-                person.getFirstName(),
-                person.getLastName(),
+                person.getFullName(),
                 "badge",
                 LocalDateTime.now().toString());
 

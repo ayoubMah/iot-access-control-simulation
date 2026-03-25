@@ -28,7 +28,9 @@ public class BadgeProcessingService {
         if (result.isPresent()) {
             Person person = result.get();
             boolean granted = person.isActive();
-            mqttPublisher.publishDoorBadgeOpenEvent(person);
+            if (granted) {
+                mqttPublisher.publishDoorBadgeOpenEvent(person);
+            }
             eventProducer.publishBadgeEvent(badgeId, granted, person.getFullName());
         } else {
             eventProducer.publishBadgeEvent(badgeId, false, null);

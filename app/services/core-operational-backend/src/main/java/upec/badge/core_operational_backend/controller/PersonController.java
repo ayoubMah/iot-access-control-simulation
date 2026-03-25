@@ -7,21 +7,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import upec.badge.core_operational_backend.model.Person;
-import upec.badge.core_operational_backend.service.BadgeProcessingService;
+import upec.badge.core_operational_backend.service.PersonService;
 
 @RestController
 @RequestMapping("/api/people")
 public class PersonController {
 
-    private final BadgeProcessingService badgeProcessingService;
+    private final PersonService personService;
 
-    public PersonController(BadgeProcessingService badgeProcessingService) {
-        this.badgeProcessingService = badgeProcessingService;
+    public PersonController(PersonService personService) {
+        this.personService = personService;
     }
 
     @GetMapping("/{badgeId}")
-    public ResponseEntity<Person> scanBadge(@PathVariable String badgeId) {
-        return badgeProcessingService.processBadgeScan(badgeId)
+    public ResponseEntity<Person> getPersonByBadgeId(@PathVariable String badgeId) {
+        return personService.getPersonByBadgeId(badgeId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
