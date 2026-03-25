@@ -2,91 +2,69 @@ package upec.badge.core_operational_backend.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import java.util.UUID;
 
 @Entity
+@Table(name = "registered_people")
 public class Person {
 
     @Id
-    private int badgeId;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    @Column
-    private String firstName;
-    
-    @Column
-    private String lastName;
-    
-    @Column
-    private String email;
-    
-    @Column
-    private String phoneNumber;
-    
-    @Column
-    private String address;
+    @Column(name = "badge_id", unique = true, nullable = false)
+    private String badgeId;
+
+    @Column(name = "full_name", nullable = false)
+    private String fullName;
+
+    @Column(nullable = false)
+    private String role;
+
+    @Column(name = "is_active", nullable = false)
+    private boolean active;
 
     public Person() {
-       
     }
 
-    public Person(int badgeId, String firstName, String lastName, String email, String phoneNumber, String address) {
-        this.badgeId = badgeId;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.email = email;
-        this.phoneNumber = phoneNumber;
-        this.address = address;
+    public UUID getId() {
+        return id;
     }
 
-    public int getBadgeId() {
+    public String getBadgeId() {
         return badgeId;
     }
 
-    public void setBadgeId(int badgeId) {
+    public void setBadgeId(String badgeId) {
         this.badgeId = badgeId;
     }
 
-    public String getFirstName() {
-        return firstName;
+    public String getFullName() {
+        return fullName;
     }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 
-    public String getLastName() {
-        return lastName;
+    public String getRole() {
+        return role;
     }
 
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
+    public void setRole(String role) {
+        this.role = role;
     }
 
-    public String getEmail() {
-        return email;
+    public boolean isActive() {
+        return active;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
+    public void setActive(boolean active) {
+        this.active = active;
     }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    
-
-    
 }

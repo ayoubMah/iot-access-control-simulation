@@ -13,18 +13,24 @@ import upec.badge.core_operational_backend.service.MqttDecisionPublisher;
 public class ManualControlController {
 
     private final MqttDecisionPublisher mqttPublisher;
+    private final EventProducer eventProducer;
 
-    public ManualControlController(EventProducer kafkaProducer,
-                                   MqttDecisionPublisher mqttPublisher) {
+    public ManualControlController(MqttDecisionPublisher mqttPublisher,
+                                   EventProducer eventProducer) {
         this.mqttPublisher = mqttPublisher;
+        this.eventProducer = eventProducer;
     }
 
     @PostMapping("/open")
     public ResponseEntity<Void> openDoor() {
-        
-        // Publish to MQTT
         mqttPublisher.publishDoorManualOpenEvent();
+        eventProducer.publishManualEvent("OPEN");
+        return ResponseEntity.ok().build();
+    }
 
+    @PostMapping("/close")
+    public ResponseEntity<Void> closeDoor() {
+        eventProducer.publishManualEvent("CLOSE");
         return ResponseEntity.ok().build();
     }
 }

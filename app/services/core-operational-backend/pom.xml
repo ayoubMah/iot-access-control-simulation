@@ -12,7 +12,7 @@
 	<artifactId>core-operational-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>core-operational-backend</name>
-	<description>entrance-cockpit-backend service</description>
+	<description>core-operational-backend service</description>
 	<url/>
 	<licenses>
 		<license/>
