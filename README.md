@@ -8,53 +8,55 @@ A DevOps- and infra-focused simulation of a company entrance system. Employees �
 
 ```mermaid
 graph TD
-    subgraph “Clients & IoT”
+    subgraph Clients
         UI[Cockpit Front-End React/Vite]
         DLM[Door Lock Mock MQTT Subscriber]
-        BSM[Badge Sensor Mock curl / Postman]
+        BSM[Badge Sensor Mock curl/Postman]
     end
 
-    subgraph “Gateway”
+    subgraph Gateway
         NGINX[NGINX Reverse Proxy :8080]
     end
 
-    subgraph “Application Layer”
+    subgraph Application
         COB[core-operational-backend Spring Boot]
         ECB[entrance-cockpit-backend Spring Boot]
-        CLB[cache-loader-backend Spring Boot one-shot]
-        WDG[watchdog-app Spring Boot HA monitor]
+        CLB[cache-loader-backend one-shot]
+        WDG[watchdog-app HA monitor]
     end
 
-    subgraph “Data & Messaging”
+    subgraph Data
         KAFKA[Apache Kafka]
         MQTT[Mosquitto MQTT Broker]
         PG[(PostgreSQL)]
         REDIS[(Redis Cache)]
     end
 
-    UI -- “POST /api/manual/open|close” --> NGINX
-    BSM -- “GET /api/people/{badgeId}” --> NGINX
+    UI -- POST /api/manual/open --> NGINX
+    UI -- POST /api/manual/close --> NGINX
+    BSM -- GET /api/people/:badgeId --> NGINX
 
-    NGINX -- “/api/people/*” --> COB
-    NGINX -- “/api/manual/*” --> ECB
-    NGINX -- “/api/events” --> ECB
-    NGINX -- “/cockpit/” --> UI
+    NGINX -- /api/people/ --> COB
+    NGINX -- /api/manual/ --> ECB
+    NGINX -- /api/events --> ECB
+    NGINX -- /cockpit/ --> UI
 
-    ECB -- “POST /api/core/manual/open|close” --> COB
+    ECB -- POST /api/core/manual/open --> COB
+    ECB -- POST /api/core/manual/close --> COB
 
-    COB -- “Redis-first lookup” --> REDIS
-    COB -- “PostgreSQL fallback” --> PG
-    COB -- “GRANTED decision” --> MQTT
-    COB -- “audit event” --> KAFKA
+    COB -- Redis-first lookup --> REDIS
+    COB -- PostgreSQL fallback --> PG
+    COB -- GRANTED decision --> MQTT
+    COB -- audit event --> KAFKA
 
-    MQTT -- “iot/entrance/door” --> DLM
-    KAFKA -- “access-events” --> ECB
-    ECB -- “SSE stream” --> UI
+    MQTT -- iot/entrance/door --> DLM
+    KAFKA -- access-events --> ECB
+    ECB -- SSE stream --> UI
 
-    CLB -- “reads all active people” --> PG
-    CLB -- “writes person:{id} keys” --> REDIS
+    CLB -- reads all active people --> PG
+    CLB -- writes person:badgeId keys --> REDIS
 
-    WDG -- “monitors” --> COB
+    WDG -- monitors --> COB
 
     style UI fill:#e1f5ff
     style DLM fill:#e1f5ff
