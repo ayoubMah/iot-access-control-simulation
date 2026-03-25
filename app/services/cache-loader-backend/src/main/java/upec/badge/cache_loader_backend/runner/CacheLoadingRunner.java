@@ -46,11 +46,11 @@ public class CacheLoadingRunner implements CommandLineRunner {
 
             // 2. Load each person into the Redis cache
             for (Person person : people) {
-                // The cache key "people::{badgeId}" must match the format used by @Cacheable
-                // in the core-operational-backend to ensure cache hits.
-                String cacheKey = "people::" + person.getBadgeId();
+                // The cache key "person:{badgeId}" must match the format used by
+                // PersonService in core-operational-backend to ensure cache hits.
+                String cacheKey = "person:" + person.getBadgeId();
                 redisTemplate.opsForValue().set(cacheKey, person);
-                logger.debug("Cached person: {}" + person.getFirstName() + " " + person.getLastName());
+                logger.debug("Cached: {} -> {}", cacheKey, person.getFullName());
             }
 
             logger.info("Successfully loaded {} records into Redis.", people.size());
