@@ -11,7 +11,7 @@ import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.stereotype.Service;
 
-import upec.badge.core_operational_backend.model.Person;
+import upec.badge.shared.model.Person;
 
 @Service
 public class MqttDecisionPublisher {
@@ -25,32 +25,32 @@ public class MqttDecisionPublisher {
     }
 
     public void publishDoorBadgeOpenEvent(Person person) {
-        try {
-            ObjectNode node = objectMapper.createObjectNode();
-            node.put("badgeId", person.getBadgeId());
-            node.put("fullName", person.getFullName());
-            node.put("eventType", "badge");
-            node.put("timestamp", Instant.now().toString());
-
-            String message = Objects.requireNonNull(objectMapper.writeValueAsString(node));
-            mqttOutboundChannel.send(MessageBuilder.withPayload(message).build());
-            log.info("Sent MQTT badge event -> {}", message);
-        } catch (Exception e) {
-            log.error("Failed to publish MQTT badge event for badgeId={}", person.getBadgeId(), e);
-        }
+        ObjectNode node = objectMapper.createObjectNode();
+        node.put("badgeId", person.getBadgeId());
+        node.put("fullName", person.getFullName());
+        node.put("status", "GRANTED");
+        node.put("eventType", "badge");
+        node.put("timestamp", Instant.now().toString());
+        send(node, "badge", person.getBadgeId());
     }
 
-    public void publishDoorManualOpenEvent() {
-        try {
-            ObjectNode node = objectMapper.createObjectNode();
-            node.put("eventType", "manual");
-            node.put("timestamp", Instant.now().toString());
+    public void publishDoorManualEvent(String status) {
+        ObjectNode node = objectMapper.createObjectNode();
+        node.put("badgeId", "MANUAL");
+        node.put("fullName", "Operator");
+        node.put("status", status);
+        node.put("eventType", "manual");
+        node.put("timestamp", Instant.now().toString());
+        send(node, "manual", "MANUAL");
+    }
 
+    private void send(ObjectNode node, String eventKind, String idForLog) {
+        try {
             String message = Objects.requireNonNull(objectMapper.writeValueAsString(node));
             mqttOutboundChannel.send(MessageBuilder.withPayload(message).build());
-            log.info("Sent MQTT manual open event -> {}", message);
+            log.info("Sent MQTT {} event -> {}", eventKind, message);
         } catch (Exception e) {
-            log.error("Failed to publish MQTT manual event", e);
+            log.error("Failed to publish MQTT {} event for id={}", eventKind, idForLog, e);
         }
     }
 }

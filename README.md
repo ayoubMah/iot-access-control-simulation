@@ -1,6 +1,6 @@
 # IoT Access Control Simulation
 
-A DevOps- and infra-focused simulation of a company entrance system. Employees “scan” a badge; backend microservices validate, authorize, log, and signal a (mock) door lock. No embedded work — only software simulation and service integration.
+A DevOps- and infra-focused simulation of a company entrance system. Employees "scan" a badge; backend microservices validate, authorize, log, and signal a (mock) door lock. No embedded work — only software simulation and service integration.
 
 ---
 
@@ -22,7 +22,6 @@ graph TD
         COB[core-operational-backend Spring Boot]
         ECB[entrance-cockpit-backend Spring Boot]
         CLB[cache-loader-backend one-shot]
-        WDG[watchdog-app HA monitor]
     end
 
     subgraph Data
@@ -56,8 +55,6 @@ graph TD
     CLB -- reads all active people --> PG
     CLB -- writes person:badgeId keys --> REDIS
 
-    WDG -- monitors --> COB
-
     style UI fill:#e1f5ff
     style DLM fill:#e1f5ff
     style BSM fill:#e1f5ff
@@ -65,7 +62,6 @@ graph TD
     style COB fill:#f0e6ff
     style ECB fill:#f0e6ff
     style CLB fill:#f0e6ff
-    style WDG fill:#f0e6ff
     style KAFKA fill:#fff4e6
     style MQTT fill:#fff4e6
     style PG fill:#e6ffe6
@@ -80,17 +76,17 @@ graph TD
 - *Badge Sensor* — Simulated with `curl` or Postman hitting `GET /api/people/{badgeId}`.
 
 **Gateway**
-- *NGINX* — Single entry point on port `8080`. Routes `/api/people/*` → core backend, `/api/manual/*` and `/api/events` → cockpit backend, `/cockpit/` → frontend.
+- *NGINX* — Single entry point on port `8080`. Routes `/api/people/*` to the core backend, `/api/manual/*` and `/api/events` to the cockpit backend, `/cockpit/` to the frontend.
 
 **Microservices**
-- *core-operational-backend* — **The Brain.** Redis-first badge lookup (PostgreSQL fallback), GRANTED/DENIED decision, publishes MQTT command and Kafka audit event.
-- *entrance-cockpit-backend* — **The UI Hub.** Consumes Kafka `access-events`, pushes them to the browser via SSE. Proxies manual door commands to the core backend.
-- *cache-loader-backend* — **One-shot Job.** Reads all active people from PostgreSQL and writes them to Redis (`person:{badgeId}` keys) on startup.
-- *watchdog-app* — **HA Monitor.** Pings the primary core instance; starts the backup container if primary is unresponsive.
+- *core-operational-backend* — **The brain.** Redis-first badge lookup (PostgreSQL fallback), GRANTED/DENIED decision, publishes MQTT command and Kafka audit event.
+- *entrance-cockpit-backend* — **The UI hub.** Consumes the Kafka `access-events` topic and pushes events to the browser via SSE. Proxies manual door commands to the core backend.
+- *cache-loader-backend* — **One-shot job.** Reads all active people from PostgreSQL on startup and writes them to Redis (`person:{badgeId}` keys), then exits.
+- *shared-model* — Maven library with the JPA `Person` entity, depended on by both `core-operational-backend` and `cache-loader-backend` so they (de)serialize the same class through Redis.
 
 **Data & Messaging**
 - *PostgreSQL* — Source of truth. Table: `registered_people`.
-- *Redis* — Hot cache for fast badge lookups. Keys: `person:{badgeId}`.
+- *Redis* — Hot cache for fast badge lookups. Keys: `person:{badgeId}`. Values: JSON, no class metadata.
 - *Kafka* — Durable audit log. Topic: `access-events` (badge scans and manual overrides).
 - *Mosquitto* — Lightweight MQTT broker. Topic: `iot/entrance/door`.
 
@@ -98,13 +94,13 @@ graph TD
 
 ## End-to-End Data Flow
 
-1. **Badge Scan** → `GET /api/people/{badgeId}` reaches **core-operational-backend** via NGINX.
-2. **Cache Lookup** → Core checks Redis for `person:{badgeId}`. On miss, falls back to PostgreSQL and writes the result back to Redis.
-3. **Decision** → If the person exists and `is_active = true`, access is `GRANTED`; otherwise `DENIED`.
-4. **MQTT Command** → On `GRANTED`, core publishes a JSON event to `iot/entrance/door`. The **Door Lock Mock** reacts.
-5. **Kafka Audit** → Core publishes a `{badgeId, fullName, status, eventType, timestamp}` event to `access-events`.
-6. **SSE Push** → **entrance-cockpit-backend** consumes the Kafka event and pushes it to all connected browser clients via SSE.
-7. **Cache Bootstrap** → On startup, **cache-loader-backend** pre-populates Redis from PostgreSQL so the first scan is always a cache hit.
+1. **Badge scan** — `GET /api/people/{badgeId}` reaches `core-operational-backend` via NGINX.
+2. **Cache lookup** — Core checks Redis for `person:{badgeId}`. On miss, falls back to PostgreSQL and writes the result back to Redis.
+3. **Decision** — If the person exists and `is_active = true`, access is `GRANTED`; otherwise `DENIED`.
+4. **MQTT command** — On `GRANTED`, core publishes `{badgeId, fullName, status, eventType, timestamp}` to `iot/entrance/door`. The door-lock mock reacts.
+5. **Kafka audit** — Core publishes the same shape of event to `access-events` (granted *and* denied).
+6. **SSE push** — `entrance-cockpit-backend` consumes the Kafka event and pushes it to all connected browser clients via SSE.
+7. **Cache bootstrap** — On startup, `cache-loader-backend` pre-populates Redis from PostgreSQL so the first scan is always a cache hit.
 
 ---
 
@@ -112,9 +108,9 @@ graph TD
 
 | Layer | Technology |
 |---|---|
-| Backend services | Spring Boot 3.5 (Java 21), Maven |
+| Backend services | Spring Boot 3.5 (Java 21), Maven multi-module |
 | IoT mock | Node.js, MQTT.js |
-| Frontend | Vite, React, TypeScript, Tailwind CSS / shadcn-ui |
+| Frontend | Vite, React, TypeScript, Tailwind CSS, shadcn-ui |
 | Messaging | Apache Kafka + ZooKeeper, Mosquitto (MQTT) |
 | Data | PostgreSQL 15, Redis 7 |
 | Gateway | NGINX (alpine) |
@@ -130,30 +126,25 @@ graph TD
 /
 ├── app/
 │   ├── services/
-│   │   ├── core-operational-backend/    (Spring Boot — decision engine)
-│   │   ├── entrance-cockpit-backend/    (Spring Boot — SSE hub & manual control)
-│   │   ├── cache-loader-backend/        (Spring Boot — one-shot Redis loader)
-│   │   ├── watchdog-app/               (Spring Boot — HA watchdog)
+│   │   ├── pom.xml                       (Maven aggregator parent)
+│   │   ├── shared-model/                 (JPA Person entity reused by core + cache-loader)
+│   │   ├── core-operational-backend/     (Spring Boot — decision engine)
+│   │   ├── cache-loader-backend/         (Spring Boot — one-shot Redis loader)
+│   │   ├── entrance-cockpit-backend/     (Spring Boot — SSE hub & manual control)
 │   │   └── iot/
-│   │       └── door-lock-mock/          (Node.js — MQTT subscriber)
+│   │       └── door-lock-mock/           (Node.js — MQTT subscriber)
 │   └── web/
-│       └── entrance-cockpit-front/      (Vite/React — operator dashboard)
+│       └── entrance-cockpit-front/       (Vite/React — operator dashboard)
 ├── deploy/
 │   ├── compose/
-│   │   ├── docker-compose.all.yml       (single-host full stack)
-│   │   ├── .env                         (local values — not committed)
-│   │   └── .env.example                 (template)
-│   ├── nginx/
-│   │   └── conf.d/nginx.conf
-│   ├── postgres/
-│   │   └── init.sql
-│   ├── mosquitto/
-│   │   └── config/mosquitto.conf
-│   └── kafka/
-│       └── topics-init.sh
+│   │   ├── docker-compose.all.yml        (single-host full stack)
+│   │   └── .env.example                  (template — copy to .env)
+│   ├── nginx/conf.d/nginx.conf
+│   ├── postgres/init.sql
+│   ├── mosquitto/config/mosquitto.conf
+│   └── kafka/topics-init.sh
 └── docs/
-    ├── ROADMAP.md
-    └── ...
+    └── ROADMAP.md
 ```
 
 ---
@@ -168,17 +159,22 @@ cp deploy/compose/.env.example deploy/compose/.env
 # 2. Start the full stack (first run builds images)
 docker compose -f deploy/compose/docker-compose.all.yml up -d --build
 
-# 3. (One-time) Create the Kafka topic
-docker exec badge-kafka bash /topics-init.sh
+# 3. Open the Cockpit UI — give services ~30s to initialize
+#    macOS:   open http://localhost:8080/cockpit/
+#    Linux:   xdg-open http://localhost:8080/cockpit/
+#    Windows: start http://localhost:8080/cockpit/
 
-# 4. Open the Cockpit UI — give services ~30 s to initialize
-open http://localhost:8080/cockpit/
-
-# 5. Simulate a badge scan
+# 4. Simulate a badge scan
 curl http://localhost:8080/api/people/B-0001
 
-# 6. Tail all logs
+# 5. Tail logs
 docker compose -f deploy/compose/docker-compose.all.yml logs -f
+```
+
+Kafka auto-creates the `access-events` topic, but you can also create it explicitly:
+
+```bash
+docker exec badge-kafka bash /topics-init.sh
 ```
 
 ---
@@ -207,6 +203,7 @@ docker compose -f deploy/compose/docker-compose.all.yml logs -f
 ## Monitoring & Debugging
 
 ### Service Health
+
 ```bash
 # All containers and their status
 docker compose -f deploy/compose/docker-compose.all.yml ps
@@ -216,14 +213,15 @@ docker compose -f deploy/compose/docker-compose.all.yml logs -f core-operational
 ```
 
 ### Verify Data
+
 ```bash
 # Redis — check cached people
-docker exec -it badge-redis redis-cli KEYS “person:*”
-docker exec -it badge-redis redis-cli GET “person:B-0001”
+docker exec -it badge-redis redis-cli KEYS "person:*"
+docker exec -it badge-redis redis-cli GET "person:B-0001"
 
 # PostgreSQL — check source data
-docker exec -it badge-postgres psql -U devuser -d badge_db \
-  -c “SELECT badge_id, full_name, role, is_active FROM registered_people;”
+docker exec -it badge-postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -c "SELECT badge_id, full_name, role, is_active FROM registered_people;"
 
 # Kafka — consume events from the beginning
 docker exec -it badge-kafka kafka-console-consumer \
@@ -232,13 +230,7 @@ docker exec -it badge-kafka kafka-console-consumer \
   --from-beginning
 
 # MQTT — subscribe to door decisions
-docker exec -it badge-mosquitto mosquitto_sub -t “iot/entrance/door”
-```
-
-### Kafka Topics
-```bash
-# Create topics manually (if topics-init.sh was not run)
-docker exec -it badge-kafka bash /topics-init.sh
+docker exec -it badge-mosquitto mosquitto_sub -t "iot/entrance/door"
 ```
 
 ---
@@ -246,18 +238,30 @@ docker exec -it badge-kafka bash /topics-init.sh
 ## Development
 
 ### Rebuild a Single Service
+
 ```bash
 docker compose -f deploy/compose/docker-compose.all.yml up -d --build core-operational-backend
 ```
 
 ### Stop All Services
+
 ```bash
 docker compose -f deploy/compose/docker-compose.all.yml down
 ```
 
 ### Clean Up (including volumes)
+
 ```bash
 docker compose -f deploy/compose/docker-compose.all.yml down -v
+```
+
+### Local Maven build (without Docker)
+
+```bash
+cd app/services
+mvn -pl core-operational-backend -am package
+mvn -pl cache-loader-backend -am package
+cd entrance-cockpit-backend && ./mvnw package
 ```
 
 ---
@@ -277,13 +281,20 @@ Vite/React cockpit, SSE stream, manual override flow end-to-end.
 - Person entity aligned with DB schema; badge scan controller added.
 - Kafka topic mismatch fixed; `AccessEventDTO` aligned with producer payload.
 - Redis-first lookup implemented in `PersonService`.
-- `cache-loader-backend` fully implemented (entity, repository, `CommandLineRunner`).
+- `cache-loader-backend` fully implemented.
 - CORS, global exception handler, `.env.example` added.
 - `ObjectMapper` replacing `String.format()` JSON across all services.
-- Watchdog config externalised to `application.properties`.
 - Deploy folder consolidated to `docker-compose.all.yml` only; all health checks correct.
 
-### Phase 5 — Hardening & Observability (Next)
+### Phase 5 — Reliability fixes (Done)
+- MQTT door-lock contract fixed: payload now includes `status`, key names match the door-lock mock.
+- Shared `Person` entity extracted to a Maven module; Redis serialization no longer ties values to a service-specific FQN.
+- `spring-boot-devtools` removed from production images.
+- `restart: unless-stopped` added to long-running services.
+- Stranded services (watchdog, telemetry, badging-mock) deleted; README reflects the actual stack.
+- `.env` files untracked; broader `.gitignore`.
+
+### Phase 6 — Hardening & Observability (Next)
 - Add `spring-boot-starter-actuator` + Prometheus endpoint to all Spring Boot services.
 - Add Grafana dashboard: Kafka consumer lag, Redis hit/miss rate, HTTP latency.
 - Add Loki for log aggregation.
@@ -291,7 +302,7 @@ Vite/React cockpit, SSE stream, manual override flow end-to-end.
 - Add integration tests with Testcontainers.
 - Set up GitHub Actions CI: build → test → push Docker image.
 
-### Phase 6 — Future Enhancements
+### Phase 7 — Future Enhancements
 - Multi-entrance support (topic per door, per-door access policies).
 - Role-based access (badge type → allowed doors).
 - Visitor badges (temporary IDs with Redis TTL expiry).

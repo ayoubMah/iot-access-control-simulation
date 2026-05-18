@@ -1,4 +1,4 @@
-package upec.badge.cache_loader_backend.model;
+package upec.badge.shared.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,9 +32,39 @@ public class Person {
     public Person() {
     }
 
-    public UUID getId() { return id; }
-    public String getBadgeId() { return badgeId; }
-    public String getFullName() { return fullName; }
-    public String getRole() { return role; }
-    public boolean isActive() { return active; }
+    public UUID getId() {
+        return id;
+    }
+
+    public String getBadgeId() {
+        return badgeId;
+    }
+
+    public void setBadgeId(String badgeId) {
+        this.badgeId = badgeId;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
 }

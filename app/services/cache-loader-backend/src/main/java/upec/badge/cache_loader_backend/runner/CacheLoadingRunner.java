@@ -9,7 +9,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
-import upec.badge.cache_loader_backend.model.Person;
+import upec.badge.shared.model.Person;
 import upec.badge.cache_loader_backend.repository.PersonRepository;
 
 @Component
@@ -18,12 +18,12 @@ public class CacheLoadingRunner implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(CacheLoadingRunner.class);
 
     private final PersonRepository personRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, Person> redisTemplate;
     private final ConfigurableApplicationContext context;
 
     public CacheLoadingRunner(
             PersonRepository personRepository,
-            RedisTemplate<String, Object> redisTemplate,
+            RedisTemplate<String, Person> redisTemplate,
             ConfigurableApplicationContext context
     ) {
         this.personRepository = personRepository;

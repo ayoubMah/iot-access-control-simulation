@@ -4,23 +4,20 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import upec.badge.shared.model.Person;
 
 @Configuration
 public class RedisConfig {
 
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
+    public RedisTemplate<String, Person> personRedisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Person> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
-
-        // Use String serializer for keys
         template.setKeySerializer(new StringRedisSerializer());
-
-        // Use Jackson JSON serializer for values
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-
+        template.setValueSerializer(new Jackson2JsonRedisSerializer<>(Person.class));
         return template;
     }
 }

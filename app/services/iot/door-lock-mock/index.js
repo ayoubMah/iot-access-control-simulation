@@ -1,34 +1,42 @@
 import mqtt from "mqtt";
 import chalk from "chalk";
 
-const brokerUrl = "mqtt://mosquitto:1883"; // matches docker-compose service name
+const brokerUrl = `mqtt://${process.env.MQTT_BROKER_HOST || "mosquitto"}:${process.env.MQTT_BROKER_PORT || 1883}`;
 const topic = "iot/entrance/door";
 
-// Connect to the MQTT broker
 const client = mqtt.connect(brokerUrl);
 
 client.on("connect", () => {
-  console.log(chalk.blueBright("🚪 Door-lock mock connected to MQTT broker"));
+  console.log(chalk.blueBright(`Door-lock mock connected to ${brokerUrl}`));
   client.subscribe(topic, (err) => {
     if (err) {
-      console.error("❌ Subscription failed:", err.message);
-    } else {
-      console.log(chalk.yellow(`📡 Listening on topic: ${topic}`));
+      console.error("Subscription failed:", err.message);
+      return;
     }
+    console.log(chalk.yellow(`Listening on topic: ${topic}`));
   });
 });
 
-client.on("message", (topic, message) => {
+client.on("message", (_topic, message) => {
+  let payload;
   try {
-    const payload = JSON.parse(message.toString());
-    const { badge_id, status } = payload;
+    payload = JSON.parse(message.toString());
+  } catch {
+    console.error("Invalid MQTT payload:", message.toString());
+    return;
+  }
 
-    if (status === "GRANTED") {
-      console.log(chalk.greenBright(`🔓 Door opened for badge ${badge_id}`));
-    } else {
-      console.log(chalk.redBright(`⛔ Access denied for badge ${badge_id}`));
-    }
-  } catch (err) {
-    console.error("⚠️ Invalid MQTT message:", message.toString());
+  const { badgeId, status, eventType, fullName } = payload;
+
+  if (eventType === "manual") {
+    const verb = status === "OPEN" ? chalk.greenBright("OPEN (manual)") : chalk.redBright("CLOSE (manual)");
+    console.log(`${verb} by operator`);
+    return;
+  }
+
+  if (status === "GRANTED") {
+    console.log(chalk.greenBright(`Door opened for ${fullName || "?"} (${badgeId})`));
+  } else {
+    console.log(chalk.redBright(`Access denied for ${badgeId || "?"}`));
   }
 });

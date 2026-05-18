@@ -2,7 +2,7 @@ package upec.badge.core_operational_backend.service;
 
 import org.springframework.stereotype.Service;
 
-import upec.badge.core_operational_backend.model.Person;
+import upec.badge.shared.model.Person;
 
 import java.util.Optional;
 

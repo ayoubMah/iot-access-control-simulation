@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:${POSTGRES_VERSION:-15-alpine}
     container_name: badge-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -22,6 +23,7 @@ services:
   redis:
     image: redis:${REDIS_VERSION:-7-alpine}
     container_name: badge-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -37,6 +39,7 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:${CONFLUENT_VERSION:-7.5.0}
     container_name: badge-zookeeper
+    restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -50,6 +53,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:${CONFLUENT_VERSION:-7.5.0}
     container_name: badge-kafka
+    restart: unless-stopped
     depends_on:
       - zookeeper
     environment:
@@ -57,10 +61,12 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     ports:
       - "9092:9092"
     volumes:
       - kafkadata:/var/lib/kafka/data
+      - ../kafka/topics-init.sh:/topics-init.sh:ro
     networks:
       - backend
     healthcheck:
@@ -72,6 +78,7 @@ services:
   mosquitto:
     image: eclipse-mosquitto:${MOSQUITTO_VERSION:-2}
     container_name: badge-mosquitto
+    restart: unless-stopped
     ports:
       - "1883:1883"
     volumes:
@@ -89,6 +96,7 @@ services:
   nginx:
     image: nginx:${NGINX_VERSION:-alpine}
     container_name: badge-nginx
+    restart: unless-stopped
     ports:
       - "8080:80"
     volumes:
@@ -106,8 +114,10 @@ services:
 
   core-operational-backend:
     build:
-      context: ../../app/services/core-operational-backend
+      context: ../../app/services
+      dockerfile: core-operational-backend/Dockerfile
     container_name: core-operational-backend
+    restart: unless-stopped
     ports:
       - "8081:8081"
     depends_on:
@@ -131,15 +141,15 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - KAFKA_ACCESS_EVENTS_TOPIC=access-events
+      - KAFKA_ACCESS_EVENTS_TOPIC=${KAFKA_ACCESS_EVENTS_TOPIC:-access-events}
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883
       - INSTANCE_ID=CORE-A
 
-
   cache-loader-backend:
     build:
-      context: ../../app/services/cache-loader-backend
+      context: ../../app/services
+      dockerfile: cache-loader-backend/Dockerfile
     container_name: cache-loader-backend
     depends_on:
       postgres: { condition: service_healthy }
@@ -160,18 +170,17 @@ services:
     build:
       context: ../../app/services/entrance-cockpit-backend
     container_name: entrance-cockpit-backend
+    restart: unless-stopped
     depends_on:
       kafka: { condition: service_healthy }
       core-operational-backend: { condition: service_healthy }
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - KAFKA_ACCESS_EVENTS_TOPIC=access-events
-      - MQTT_HOST=mosquitto
-      - MQTT_PORT=1883
+      - KAFKA_ACCESS_EVENTS_TOPIC=${KAFKA_ACCESS_EVENTS_TOPIC:-access-events}
       - CORE_BACKEND_URL=http://core-operational-backend:8081
     ports:
-      - "8088:8082"
+      - "8082:8082"
     networks:
       - backend
 
@@ -179,8 +188,9 @@ services:
     build:
       context: ../../app/services/iot/door-lock-mock
     container_name: badge-door-lock-mock
+    restart: unless-stopped
     depends_on:
-      - mosquitto
+      mosquitto: { condition: service_healthy }
     environment:
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
@@ -191,6 +201,7 @@ services:
     build:
       context: ../../app/web/entrance-cockpit-front
     container_name: badge-cockpit-front
+    restart: unless-stopped
     environment:
       - VITE_LOGS_BACKEND_SSE_URL=/api/events
     networks:
@@ -207,4 +218,3 @@ volumes:
 networks:
   backend:
     driver: bridge
-

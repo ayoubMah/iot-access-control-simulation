@@ -23,13 +23,14 @@ public class ManualControlController {
 
     @PostMapping("/open")
     public ResponseEntity<Void> openDoor() {
-        mqttPublisher.publishDoorManualOpenEvent();
+        mqttPublisher.publishDoorManualEvent("OPEN");
         eventProducer.publishManualEvent("OPEN");
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/close")
     public ResponseEntity<Void> closeDoor() {
+        mqttPublisher.publishDoorManualEvent("CLOSE");
         eventProducer.publishManualEvent("CLOSE");
         return ResponseEntity.ok().build();
     }

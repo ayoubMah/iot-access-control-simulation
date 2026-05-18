@@ -1,3 +1,27 @@
-# IDE folders
+# IDE
 .idea/
 .vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.log
+.mvn/wrapper/maven-wrapper.jar
+hs_err_pid*
+
+# Node
+node_modules/
+dist/
+.npm/
+*.tsbuildinfo
+
+# Env files (only .env.example is tracked)
+.env
+.env.local
+.env.*.local
+!.env.example

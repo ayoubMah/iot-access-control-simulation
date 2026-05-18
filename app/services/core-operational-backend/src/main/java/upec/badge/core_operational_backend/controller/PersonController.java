@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import upec.badge.core_operational_backend.model.Person;
+import upec.badge.shared.model.Person;
 import upec.badge.core_operational_backend.service.PersonService;
 
 @RestController
